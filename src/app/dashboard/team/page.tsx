@@ -1,10 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { addTeamMember } from "./actions";
-
-const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold";
+import AddTeamMemberForm from "./AddTeamMemberForm";
 
 export default async function TeamPage() {
   const user = await getCurrentUser();
@@ -51,61 +48,7 @@ export default async function TeamPage() {
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-navy">Add team member</h2>
-        <form action={addTeamMember} className="mt-4 space-y-4">
-          <div>
-            <label htmlFor="full_name" className="block text-sm font-medium text-gray-700">
-              Full name
-            </label>
-            <input id="full_name" name="full_name" type="text" className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input id="email" name="email" type="email" required className={inputClass} />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Temporary password
-            </label>
-            <input id="password" name="password" type="text" required minLength={8} className={inputClass} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Role
-              </label>
-              <select id="role" name="role" defaultValue="staff" className={inputClass}>
-                <option value="manager">Manager</option>
-                <option value="staff">Staff</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="department" className="block text-sm font-medium text-gray-700">
-                Department
-              </label>
-              {departments.length > 0 ? (
-                <select id="department" name="department" required className={inputClass}>
-                  <option value="">Select…</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input id="department" name="department" type="text" required className={inputClass} />
-              )}
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-md bg-navy px-3 py-2 text-sm font-semibold text-white hover:bg-navy-light"
-          >
-            Add Team Member
-          </button>
-        </form>
+        <AddTeamMemberForm departments={departments} />
       </div>
     </div>
   );

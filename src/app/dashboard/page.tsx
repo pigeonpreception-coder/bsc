@@ -15,7 +15,7 @@ export default async function DashboardHomePage() {
 
   const { data: plan } = await supabase
     .from("strategic_plans")
-    .select("id, company_name")
+    .select("id, company_name, status")
     .eq("tenant_id", user?.tenant_id)
     .limit(1)
     .maybeSingle();
@@ -56,19 +56,35 @@ export default async function DashboardHomePage() {
     .maybeSingle();
 
   if (!corporateScorecard) {
+    // Check if org onboarding is needed
+    const { count: orgCount } = await supabase
+      .from("org_positions")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", user!.tenant_id!);
+
     return (
       <div>
         <h1 className="text-xl font-semibold text-navy">{plan.company_name}</h1>
         <p className="mt-2 text-sm text-gray-500">
-          Strategic plan created. Balanced Scorecards haven&apos;t been generated yet.
+          Strategic plan created. {!orgCount ? "Set up your organisational hierarchy to generate cascaded Balanced Scorecards." : "Balanced Scorecards haven't been generated yet."}
         </p>
         {user?.role === "company_admin" && (
-          <Link
-            href={`/dashboard/plan/${plan.id}`}
-            className="mt-4 inline-block rounded-md bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light"
-          >
-            Go to Strategic Plan
-          </Link>
+          <div className="mt-4 flex gap-3">
+            <Link
+              href={`/dashboard/plan/${plan.id}`}
+              className="inline-block rounded-md bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light"
+            >
+              Go to Strategic Plan
+            </Link>
+            {plan.status === "active" && (
+              <Link
+                href="/dashboard/onboarding"
+                className="inline-block rounded-md border border-gold bg-gold/10 px-4 py-2 text-sm font-semibold text-navy hover:bg-gold/20"
+              >
+                Set Up Organisation
+              </Link>
+            )}
+          </div>
         )}
       </div>
     );

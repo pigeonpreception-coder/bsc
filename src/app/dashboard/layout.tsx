@@ -18,15 +18,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (user.role === "super_admin") redirect("/admin");
 
   let planId: string | null = null;
+  let hasActivePlan = false;
   if (user.tenant_id) {
     const supabase = await createClient();
     const { data: plan } = await supabase
       .from("strategic_plans")
-      .select("id")
+      .select("id, status")
       .eq("tenant_id", user.tenant_id)
       .limit(1)
       .maybeSingle();
     planId = plan?.id ?? null;
+    hasActivePlan = plan?.status === "active";
   }
 
   return (
@@ -43,6 +45,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             {user.role === "company_admin" && (
               <>
                 {planId && <Link href={`/dashboard/plan/${planId}`} className="hover:text-white">Plan</Link>}
+                {hasActivePlan && <Link href="/dashboard/onboarding" className="hover:text-white">Org Setup</Link>}
                 <Link href="/dashboard/team" className="hover:text-white">Team</Link>
               </>
             )}

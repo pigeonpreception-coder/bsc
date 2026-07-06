@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeAutoStatus } from "@/lib/scorecard";
+import { calculatePerformanceScores } from "@/lib/performance";
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -74,6 +75,9 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
       actual_value: value,
       updated_by: user.id,
     });
+
+    // Recalculate performance scores cascade
+    await calculatePerformanceScores(supabase, user.tenant_id!);
   }
 
   revalidatePath(`/dashboard/scorecards/${row.scorecard_id}`);

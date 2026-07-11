@@ -1,17 +1,45 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import type { CascadingEntry } from "./CascadingList";
+import type { StatusRowEntry } from "./StatusRowList";
 
-function linesToArray(value: FormDataEntryValue | null): string[] {
-  return String(value ?? "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+export type BusinessProfileDraft = {
+  vision: string;
+  mission: string;
+  values: CascadingEntry[];
+  overallStrategicGoal: string;
+  strategicPriorities: CascadingEntry[];
+  industry: string;
+  industryOther: string;
+  sector: string;
+  sectorOther: string;
+  businessDescription: string;
+  businessBackground: string;
+  businessDirection: string;
+  companyProfileUrl: string | null;
+  companyProfileFileName: string | null;
+  websiteUrl: string;
+  // Section 2
+  financialYearStart: string;
+  planDurationYears: number | null;
+  visionAchievementDate: string;
+  keyCustomers: StatusRowEntry[];
+  keyStakeholders: StatusRowEntry[];
+  additionalInfo: string;
+};
+
+function computePeriodEnd(financialYearStart: string, years: number): string | null {
+  if (!financialYearStart || !years) return null;
+  const start = new Date(financialYearStart + "T00:00:00Z");
+  if (Number.isNaN(start.getTime())) return null;
+  const end = new Date(Date.UTC(start.getUTCFullYear() + years, start.getUTCMonth(), start.getUTCDate() - 1));
+  return end.toISOString().slice(0, 10);
 }
 
-export async function submitQuestionnaire(formData: FormData) {
+export async function saveBusinessProfileDraft(planId: string | null, data: BusinessProfileDraft) {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id) {
     throw new Error("Not authorized");
@@ -19,46 +47,63 @@ export async function submitQuestionnaire(formData: FormData) {
 
   const supabase = await createClient();
 
-  const companyName = String(formData.get("company_name") ?? "").trim();
-  const vision = String(formData.get("vision") ?? "").trim();
-  const mission = String(formData.get("mission") ?? "").trim();
-  const values = linesToArray(formData.get("values"));
-  const periodYears = Number(formData.get("period_years") ?? 3);
-  const startYear = String(formData.get("start_year") ?? new Date().getFullYear());
-
-  const periodStart = `${startYear}-01-01`;
-  const periodEnd = `${Number(startYear) + periodYears - 1}-12-31`;
-
-  const questionnaireAnswers = {
-    industry: String(formData.get("industry") ?? "").trim(),
-    country: String(formData.get("country") ?? "").trim(),
-    employee_count: String(formData.get("employee_count") ?? "").trim(),
-    strategic_priorities: linesToArray(formData.get("strategic_priorities")),
-    products_services: linesToArray(formData.get("products_services")),
-    target_markets: linesToArray(formData.get("target_markets")),
-    competitors: linesToArray(formData.get("competitors")),
-    financial_performance: String(formData.get("financial_performance") ?? "").trim(),
-    departments: linesToArray(formData.get("departments")),
+  const payload = {
+    vision: data.vision,
+    mission: data.mission,
+    values: data.values,
+    overall_strategic_goal: data.overallStrategicGoal,
+    strategic_priorities: data.strategicPriorities,
+    industry: data.industry,
+    industry_other: data.industryOther || null,
+    sector: data.sector,
+    sector_other: data.sectorOther || null,
+    business_description: data.businessDescription,
+    business_background: data.businessBackground,
+    business_direction: data.businessDirection,
+    company_profile_url: data.companyProfileUrl,
+    website_url: data.websiteUrl || null,
+    financial_year_start: data.financialYearStart || null,
+    strategic_period_years: data.planDurationYears,
+    period_start: data.financialYearStart || null,
+    period_end: data.planDurationYears
+      ? computePeriodEnd(data.financialYearStart, data.planDurationYears)
+      : null,
+    vision_achievement_date: data.visionAchievementDate || null,
+    key_customers: data.keyCustomers,
+    key_stakeholders: data.keyStakeholders,
+    additional_info: data.additionalInfo || null,
+    last_saved_at: new Date().toISOString(),
   };
+
+  if (planId) {
+    const { error } = await supabase
+      .from("strategic_plans")
+      .update(payload)
+      .eq("id", planId)
+      .eq("tenant_id", user.tenant_id);
+    if (error) throw error;
+    revalidatePath("/dashboard/questionnaire");
+    return { planId };
+  }
+
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("company_name")
+    .eq("id", user.tenant_id)
+    .single();
 
   const { data: plan, error } = await supabase
     .from("strategic_plans")
     .insert({
       tenant_id: user.tenant_id,
-      company_name: companyName,
-      vision,
-      mission,
-      values,
-      strategic_period_years: periodYears,
-      period_start: periodStart,
-      period_end: periodEnd,
+      company_name: tenant?.company_name ?? "",
       status: "draft",
-      questionnaire_answers: questionnaireAnswers,
+      ...payload,
     })
-    .select()
+    .select("id")
     .single();
-
   if (error) throw error;
 
-  redirect(`/dashboard/plan/${plan.id}`);
+  revalidatePath("/dashboard/questionnaire");
+  return { planId: plan.id as string };
 }

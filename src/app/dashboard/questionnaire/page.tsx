@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import QuestionnaireForm from "./QuestionnaireForm";
+import BusinessProfileForm, { type InitialProfileData } from "./BusinessProfileForm";
 
 export default async function QuestionnairePage() {
   const user = await getCurrentUser();
@@ -9,16 +9,6 @@ export default async function QuestionnairePage() {
   if (user.role !== "company_admin") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { data: existingPlan } = await supabase
-    .from("strategic_plans")
-    .select("id")
-    .eq("tenant_id", user.tenant_id)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingPlan) {
-    redirect(`/dashboard/plan/${existingPlan.id}`);
-  }
 
   const { data: tenant } = await supabase
     .from("tenants")
@@ -26,15 +16,52 @@ export default async function QuestionnairePage() {
     .eq("id", user.tenant_id)
     .single();
 
+  const { data: existingPlan } = await supabase
+    .from("strategic_plans")
+    .select("*")
+    .eq("tenant_id", user.tenant_id)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingPlan && existingPlan.status === "active") {
+    redirect(`/dashboard/plan/${existingPlan.id}`);
+  }
+
+  const initialData: InitialProfileData = existingPlan
+    ? {
+        vision: existingPlan.vision ?? "",
+        mission: existingPlan.mission ?? "",
+        values: existingPlan.values ?? [],
+        overallStrategicGoal: existingPlan.overall_strategic_goal ?? "",
+        strategicPriorities: existingPlan.strategic_priorities ?? [],
+        industry: existingPlan.industry ?? "",
+        industryOther: existingPlan.industry_other ?? "",
+        sector: existingPlan.sector ?? "",
+        sectorOther: existingPlan.sector_other ?? "",
+        businessDescription: existingPlan.business_description ?? "",
+        businessBackground: existingPlan.business_background ?? "",
+        businessDirection: existingPlan.business_direction ?? "",
+        companyProfileUrl: existingPlan.company_profile_url,
+        companyProfileFileName: existingPlan.company_profile_url
+          ? existingPlan.company_profile_url.split("/").pop()?.replace(/^\d+-/, "")
+          : null,
+        websiteUrl: existingPlan.website_url ?? "",
+        financialYearStart: existingPlan.financial_year_start ?? "",
+        planDurationYears: existingPlan.strategic_period_years ?? null,
+        visionAchievementDate: existingPlan.vision_achievement_date ?? "",
+        keyCustomers: existingPlan.key_customers ?? [],
+        keyStakeholders: existingPlan.key_stakeholders ?? [],
+        additionalInfo: existingPlan.additional_info ?? "",
+      }
+    : {};
+
   return (
-    <div>
-      <h1 className="mx-auto max-w-2xl text-xl font-semibold text-navy">Strategic Plan Questionnaire</h1>
-      <p className="mx-auto mt-1 max-w-2xl text-sm text-gray-500">
-        Answer these questions and our AI advisor will draft your Corporate Strategic Plan and Balanced Scorecards.
-      </p>
-      <div className="mt-6">
-        <QuestionnaireForm defaultCompanyName={tenant?.company_name ?? ""} />
-      </div>
-    </div>
+    <BusinessProfileForm
+      planId={existingPlan?.id ?? null}
+      tenantId={user.tenant_id!}
+      companyName={tenant?.company_name ?? ""}
+      initialData={initialData}
+      initialLastSavedAt={existingPlan?.last_saved_at ?? null}
+    />
   );
 }

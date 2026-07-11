@@ -74,7 +74,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </div>
           <div className="col-span-2">
             <dt className="font-medium text-gray-700">Core values</dt>
-            <dd className="text-gray-500">{(plan.values ?? []).join(", ") || "—"}</dd>
+            <dd className="text-gray-500">
+              {((plan.values ?? []) as { name: string }[]).map((v) => v.name).join(", ") || "—"}
+            </dd>
           </div>
         </dl>
       </div>

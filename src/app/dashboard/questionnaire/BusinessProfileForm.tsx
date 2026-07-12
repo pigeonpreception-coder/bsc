@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import CascadingList, { type CascadingEntry } from "./CascadingList";
 import SearchableSelect from "./SearchableSelect";
 import FileUploadField from "./FileUploadField";
+import SupportingDocumentsList, { type SupportingDocument } from "./SupportingDocumentsList";
 import StatusRowList, { type StatusRowEntry } from "./StatusRowList";
-import { INDUSTRIES, SECTORS } from "./constants";
+import { INDUSTRIES, SECTORS, PRODUCT_SERVICE_STATUS_OPTIONS, IMPORTANCE_STATUS_OPTIONS } from "./constants";
 import { saveBusinessProfileDraft, type BusinessProfileDraft } from "./actions";
 import { generateStrategicPlan } from "@/app/dashboard/plan/[id]/actions";
 
@@ -57,6 +58,15 @@ export default function BusinessProfileForm({
   const [companyProfileFileName, setCompanyProfileFileName] = useState<string | null>(
     initialData.companyProfileFileName ?? null,
   );
+  const [strategicPlanDocumentUrl, setStrategicPlanDocumentUrl] = useState<string | null>(
+    initialData.strategicPlanDocumentUrl ?? null,
+  );
+  const [strategicPlanDocumentFileName, setStrategicPlanDocumentFileName] = useState<string | null>(
+    initialData.strategicPlanDocumentFileName ?? null,
+  );
+  const [supportingDocuments, setSupportingDocuments] = useState<SupportingDocument[]>(
+    initialData.supportingDocuments ?? [],
+  );
   const [websiteUrl, setWebsiteUrl] = useState(initialData.websiteUrl ?? "");
 
   // Section 2
@@ -69,6 +79,9 @@ export default function BusinessProfileForm({
   const [visionYear, setVisionYear] = useState(initialVisionDate ? initialVisionDate.slice(0, 4) : "");
   const [keyCustomers, setKeyCustomers] = useState<StatusRowEntry[]>(initialData.keyCustomers ?? []);
   const [keyStakeholders, setKeyStakeholders] = useState<StatusRowEntry[]>(initialData.keyStakeholders ?? []);
+  const [keyProductsServices, setKeyProductsServices] = useState<StatusRowEntry[]>(
+    initialData.keyProductsServices ?? [],
+  );
   const [additionalInfo, setAdditionalInfo] = useState(initialData.additionalInfo ?? "");
 
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -98,12 +111,16 @@ export default function BusinessProfileForm({
     businessDirection,
     companyProfileUrl,
     companyProfileFileName,
+    strategicPlanDocumentUrl,
+    strategicPlanDocumentFileName,
+    supportingDocuments,
     websiteUrl,
     financialYearStart,
     planDurationYears,
     visionAchievementDate,
     keyCustomers,
     keyStakeholders,
+    keyProductsServices,
     additionalInfo,
   });
 
@@ -144,10 +161,10 @@ export default function BusinessProfileForm({
   const visionYearValid =
     !!visionMonth && !!visionYear && validVisionYears.includes(Number(visionYear));
 
-  const isStatusRowListValid = (rows: StatusRowEntry[]) => {
-    const first3 = rows.length >= 3 ? rows.slice(0, 3) : rows;
+  const isStatusRowListValid = (rows: StatusRowEntry[], minRows: number) => {
+    const firstN = rows.length >= minRows ? rows.slice(0, minRows) : rows;
     return (
-      first3.length >= 3 && first3.every((r) => r.description.trim().length > 0 && r.status.trim().length > 0)
+      firstN.length >= minRows && firstN.every((r) => r.description.trim().length > 0 && r.status.trim().length > 0)
     );
   };
 
@@ -165,8 +182,9 @@ export default function BusinessProfileForm({
     financialYearStart.trim().length > 0,
     planDurationYears !== null,
     visionYearValid,
-    isStatusRowListValid(keyCustomers),
-    isStatusRowListValid(keyStakeholders),
+    isStatusRowListValid(keyCustomers, 3),
+    isStatusRowListValid(keyStakeholders, 3),
+    isStatusRowListValid(keyProductsServices, 1),
   ];
   const completedCount = mandatoryChecks.filter(Boolean).length;
   const totalCount = mandatoryChecks.length;
@@ -440,6 +458,9 @@ export default function BusinessProfileForm({
 
         <FileUploadField
           tenantId={tenantId}
+          storageFolder="company-profile"
+          label="Upload Your Company Profile"
+          description="Upload your company's official profile, brochure, or any document that describes your business in detail. This helps our AI generate a more accurate and tailored Strategic Plan."
           path={companyProfileUrl}
           fileName={companyProfileFileName}
           onUploaded={(path, name) => {
@@ -451,6 +472,38 @@ export default function BusinessProfileForm({
             setCompanyProfileFileName(null);
           }}
         />
+
+        <FileUploadField
+          tenantId={tenantId}
+          storageFolder="strategic-plan-draft"
+          label="Upload any existing draft of your company's Strategic Plan"
+          description="If you already have a draft or previous Strategic Plan, upload it here so our AI can build on what you already have."
+          path={strategicPlanDocumentUrl}
+          fileName={strategicPlanDocumentFileName}
+          onUploaded={(path, name) => {
+            setStrategicPlanDocumentUrl(path);
+            setStrategicPlanDocumentFileName(name);
+          }}
+          onRemoved={() => {
+            setStrategicPlanDocumentUrl(null);
+            setStrategicPlanDocumentFileName(null);
+          }}
+        />
+
+        <div>
+          <h3 className="text-sm font-medium text-gray-700">Any other supporting documents</h3>
+          <p className="text-xs text-gray-500">
+            Upload any other document that contains information that would help Safina develop your Strategic Plan
+            — e.g. board papers, market research, past reports.
+          </p>
+          <div className="mt-2">
+            <SupportingDocumentsList
+              tenantId={tenantId}
+              documents={supportingDocuments}
+              onChange={setSupportingDocuments}
+            />
+          </div>
+        </div>
 
         <div>
           <label htmlFor="websiteUrl" className="block text-sm font-medium text-gray-700">
@@ -598,6 +651,7 @@ export default function BusinessProfileForm({
               rowLabel={(i) => `Customer #${i + 1}`}
               descriptionPlaceholder="e.g. First-time home buyers aged 25–40 in urban areas"
               addLabel="+ Add Another Key Customer"
+              statusOptions={IMPORTANCE_STATUS_OPTIONS}
             />
           </div>
         </div>
@@ -614,6 +668,25 @@ export default function BusinessProfileForm({
               rowLabel={(i) => `Stakeholder #${i + 1}`}
               descriptionPlaceholder="e.g. Board of Directors"
               addLabel="+ Add Another Key Stakeholder"
+              statusOptions={IMPORTANCE_STATUS_OPTIONS}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            What are your Key or core products/services? <span className="text-red-600">*</span>
+          </label>
+          <p className="text-xs text-gray-500">Provide as many key or core products/services as you can.</p>
+          <div className="mt-2">
+            <StatusRowList
+              entries={keyProductsServices}
+              onChange={setKeyProductsServices}
+              rowLabel={(i) => `Product/Service #${i + 1}`}
+              descriptionPlaceholder="e.g. Home loans"
+              addLabel="+ Add Another Key or Core Products/Services"
+              statusOptions={PRODUCT_SERVICE_STATUS_OPTIONS}
+              minMandatoryRows={1}
             />
           </div>
         </div>

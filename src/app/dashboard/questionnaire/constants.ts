@@ -1,3 +1,9 @@
+// Used for the Key Customers / Key Stakeholders status dropdown
+export const IMPORTANCE_STATUS_OPTIONS = ["Critical", "Most Important", "Very Important", "Important", "Neutral"];
+
+// Used for the Key/Core Products & Services status dropdown
+export const PRODUCT_SERVICE_STATUS_OPTIONS = ["Primary (Key & Core)", "Secondary", "Augmented (Not Primary)"];
+
 export const INDUSTRIES = [
   "Agriculture, Forestry & Fishing",
   "Mining & Quarrying",

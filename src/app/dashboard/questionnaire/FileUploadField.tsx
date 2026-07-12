@@ -8,12 +8,18 @@ const MAX_SIZE_BYTES = 20 * 1024 * 1024;
 
 export default function FileUploadField({
   tenantId,
+  storageFolder,
+  label,
+  description,
   path,
   fileName,
   onUploaded,
   onRemoved,
 }: {
   tenantId: string;
+  storageFolder: string;
+  label: string;
+  description?: string;
   path: string | null;
   fileName: string | null;
   onUploaded: (path: string, fileName: string, fileSize: number) => void;
@@ -42,7 +48,7 @@ export default function FileUploadField({
 
     setIsUploading(true);
     const supabase = createClient();
-    const storagePath = `${tenantId}/company-profile/${Date.now()}-${file.name}`;
+    const storagePath = `${tenantId}/${storageFolder}/${Date.now()}-${file.name}`;
 
     const { error: uploadError } = await supabase.storage
       .from("company-documents")
@@ -60,11 +66,8 @@ export default function FileUploadField({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700">Upload Your Company Profile</label>
-      <p className="text-xs text-gray-500">
-        Upload your company&apos;s official profile, brochure, or any document that describes your business in
-        detail. This helps our AI generate a more accurate and tailored Strategic Plan.
-      </p>
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      {description && <p className="text-xs text-gray-500">{description}</p>}
 
       {fileName && path ? (
         <div className="mt-2 flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">

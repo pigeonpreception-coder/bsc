@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { CascadingEntry } from "./CascadingList";
 import type { StatusRowEntry } from "./StatusRowList";
+import type { SupportingDocument } from "./SupportingDocumentsList";
 
 export type BusinessProfileDraft = {
   vision: string;
@@ -21,6 +22,9 @@ export type BusinessProfileDraft = {
   businessDirection: string;
   companyProfileUrl: string | null;
   companyProfileFileName: string | null;
+  strategicPlanDocumentUrl: string | null;
+  strategicPlanDocumentFileName: string | null;
+  supportingDocuments: SupportingDocument[];
   websiteUrl: string;
   // Section 2
   financialYearStart: string;
@@ -28,6 +32,7 @@ export type BusinessProfileDraft = {
   visionAchievementDate: string;
   keyCustomers: StatusRowEntry[];
   keyStakeholders: StatusRowEntry[];
+  keyProductsServices: StatusRowEntry[];
   additionalInfo: string;
 };
 
@@ -61,6 +66,8 @@ export async function saveBusinessProfileDraft(planId: string | null, data: Busi
     business_background: data.businessBackground,
     business_direction: data.businessDirection,
     company_profile_url: data.companyProfileUrl,
+    strategic_plan_document_url: data.strategicPlanDocumentUrl,
+    supporting_documents: data.supportingDocuments,
     website_url: data.websiteUrl || null,
     financial_year_start: data.financialYearStart || null,
     strategic_period_years: data.planDurationYears,
@@ -71,6 +78,7 @@ export async function saveBusinessProfileDraft(planId: string | null, data: Busi
     vision_achievement_date: data.visionAchievementDate || null,
     key_customers: data.keyCustomers,
     key_stakeholders: data.keyStakeholders,
+    key_products_services: data.keyProductsServices,
     additional_info: data.additionalInfo || null,
     last_saved_at: new Date().toISOString(),
   };

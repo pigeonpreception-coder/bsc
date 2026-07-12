@@ -9,6 +9,12 @@ import { createAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
 import { extractDocumentText, fetchWebsiteText } from "@/lib/document-extract";
 import type { CascadingEntry } from "@/app/dashboard/questionnaire/CascadingList";
 import type { StatusRowEntry } from "@/app/dashboard/questionnaire/StatusRowList";
+import type { SupportingDocument } from "@/app/dashboard/questionnaire/SupportingDocumentsList";
+
+// Cap on how many supporting documents get downloaded and extracted per
+// generation — an unbounded loop here could balloon the prompt size and
+// the request latency if a client uploads a large batch of files.
+const MAX_SUPPORTING_DOCUMENTS = 5;
 
 const PERSPECTIVES = ["Financial", "Customer", "Internal Process", "Learning & Growth"] as const;
 
@@ -96,19 +102,34 @@ export async function generateStrategicPlan(planId: string) {
   const priorities = (plan.strategic_priorities as CascadingEntry[] | null) ?? [];
   const customers = (plan.key_customers as StatusRowEntry[] | null) ?? [];
   const stakeholders = (plan.key_stakeholders as StatusRowEntry[] | null) ?? [];
+  const productsServices = (plan.key_products_services as StatusRowEntry[] | null) ?? [];
+  const supportingDocuments = (plan.supporting_documents as SupportingDocument[] | null) ?? [];
 
   const industryLine = plan.industry === "Others" ? plan.industry_other : plan.industry;
   const sectorLine = plan.sector === "Others" ? plan.sector_other : plan.sector;
 
+  const admin = createAdminClient();
+
+  async function extractUploaded(path: string): Promise<string | null> {
+    const { data: file } = await admin.storage.from("company-documents").download(path);
+    if (!file) return null;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    return extractDocumentText(buffer, path);
+  }
+
   let fileContext = "";
   if (plan.company_profile_url) {
-    const admin = createAdminClient();
-    const { data: file } = await admin.storage.from("company-documents").download(plan.company_profile_url);
-    if (file) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const text = await extractDocumentText(buffer, plan.company_profile_url);
-      if (text) fileContext = `\n\nExcerpt from uploaded company profile document:\n${text}`;
-    }
+    const text = await extractUploaded(plan.company_profile_url);
+    if (text) fileContext += `\n\nExcerpt from uploaded company profile document:\n${text}`;
+  }
+  if (plan.strategic_plan_document_url) {
+    const text = await extractUploaded(plan.strategic_plan_document_url);
+    if (text) fileContext += `\n\nExcerpt from uploaded existing draft Strategic Plan:\n${text}`;
+  }
+  for (const doc of supportingDocuments.slice(0, MAX_SUPPORTING_DOCUMENTS)) {
+    if (!doc.url) continue;
+    const text = await extractUploaded(doc.url);
+    if (text) fileContext += `\n\nExcerpt from uploaded supporting document "${doc.fileName}":\n${text}`;
   }
 
   let websiteContext = "";
@@ -134,6 +155,7 @@ Planning period: ${plan.strategic_period_years} years (${plan.period_start} to $
 Vision achievement target: ${plan.vision_achievement_date ?? "n/a"}
 Key customer segments: ${customers.filter((c) => c.description).map((c) => `${c.description} (${c.status})`).join("; ") || "n/a"}
 Key stakeholders: ${stakeholders.filter((s) => s.description).map((s) => `${s.description} (${s.status})`).join("; ") || "n/a"}
+Key/core products & services: ${productsServices.filter((p) => p.description).map((p) => `${p.description} (${p.status})`).join("; ") || "n/a"}
 Additional context: ${plan.additional_info || "n/a"}${fileContext}${websiteContext}
 
 Produce: an Executive Summary, a SWOT analysis, 3-5 Strategic Pillars, Strategic Objectives grouped across all four Balanced Scorecard perspectives (Financial, Customer, Internal Process, Learning & Growth), a set of Key Performance Indicators tied to those objectives, and a phased Strategic Implementation Roadmap covering the planning period. Call the submit_strategic_plan tool with your answer.`;

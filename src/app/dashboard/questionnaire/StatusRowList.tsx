@@ -2,14 +2,13 @@
 
 export type StatusRowEntry = { description: string; status: string };
 
-const STATUS_OPTIONS = ["Critical", "Most Important", "Very Important", "Important", "Neutral"];
-
 export default function StatusRowList({
   entries,
   onChange,
   rowLabel,
   descriptionPlaceholder,
   addLabel,
+  statusOptions,
   minMandatoryRows = 3,
 }: {
   entries: StatusRowEntry[];
@@ -17,6 +16,7 @@ export default function StatusRowList({
   rowLabel: (index: number) => string;
   descriptionPlaceholder: string;
   addLabel: string;
+  statusOptions: string[];
   minMandatoryRows?: number;
 }) {
   const list =
@@ -55,7 +55,7 @@ export default function StatusRowList({
               className="w-44 rounded-md border border-gray-300 px-2 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
             >
               <option value="">{isMandatory ? "Status *" : "Status"}</option>
-              {STATUS_OPTIONS.map((s) => (
+              {statusOptions.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>

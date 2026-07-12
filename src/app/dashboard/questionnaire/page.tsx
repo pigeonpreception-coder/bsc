@@ -45,12 +45,18 @@ export default async function QuestionnairePage() {
         companyProfileFileName: existingPlan.company_profile_url
           ? existingPlan.company_profile_url.split("/").pop()?.replace(/^\d+-/, "")
           : null,
+        strategicPlanDocumentUrl: existingPlan.strategic_plan_document_url,
+        strategicPlanDocumentFileName: existingPlan.strategic_plan_document_url
+          ? existingPlan.strategic_plan_document_url.split("/").pop()?.replace(/^\d+-/, "")
+          : null,
+        supportingDocuments: existingPlan.supporting_documents ?? [],
         websiteUrl: existingPlan.website_url ?? "",
         financialYearStart: existingPlan.financial_year_start ?? "",
         planDurationYears: existingPlan.strategic_period_years ?? null,
         visionAchievementDate: existingPlan.vision_achievement_date ?? "",
         keyCustomers: existingPlan.key_customers ?? [],
         keyStakeholders: existingPlan.key_stakeholders ?? [],
+        keyProductsServices: existingPlan.key_products_services ?? [],
         additionalInfo: existingPlan.additional_info ?? "",
       }
     : {};

@@ -1,6 +1,6 @@
 import "server-only";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { computeProgressPercent, PERSPECTIVES } from "./scorecard";
+import { computeAutoStatus, computeProgressPercent, perspectiveBucket } from "./scorecard";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -32,7 +32,8 @@ type ScorecardRow = {
   perspective: string;
   actual: string | null;
   target: string | null;
-  weight: number | null;
+  objective_weight: number | null;
+  lower_is_better: boolean | null;
   status: string;
 };
 
@@ -51,8 +52,8 @@ type PositionScorecard = {
 
 // ─── Performance Score Calculation ───────────────────────────
 
-function computeKpiScore(actual: string | null, target: string | null): number | null {
-  const pct = computeProgressPercent(actual, target);
+function computeKpiScore(actual: string | null, target: string | null, lowerIsBetter: boolean): number | null {
+  const pct = computeProgressPercent(actual, target, lowerIsBetter);
   if (pct === null) return null;
   return Math.min(pct, 100);
 }
@@ -67,28 +68,34 @@ function computeScorecardScore(rows: ScorecardRow[]) {
   const kpiScores: { score: number; weight: number }[] = [];
   let onTrack = 0, atRisk = 0, offTrack = 0;
 
-  const perspectiveScores: Record<string, { score: number; weight: number }[]> = {};
-  for (const p of PERSPECTIVES) perspectiveScores[p] = [];
+  const bucketScores: Record<string, { score: number; weight: number }[]> = {
+    financial: [],
+    customer: [],
+    internal_process: [],
+    learning_growth: [],
+  };
 
   for (const row of rows) {
-    const score = computeKpiScore(row.actual, row.target);
+    const lowerIsBetter = row.lower_is_better ?? false;
+    const score = computeKpiScore(row.actual, row.target, lowerIsBetter);
     if (score === null) continue;
-    const w = row.weight ?? 1;
+    const w = row.objective_weight ?? 1;
     kpiScores.push({ score, weight: w });
-    if (perspectiveScores[row.perspective]) {
-      perspectiveScores[row.perspective].push({ score, weight: w });
-    }
-    if (score >= 90) onTrack++;
-    else if (score >= 70) atRisk++;
-    else offTrack++;
+    const bucket = perspectiveBucket(row.perspective);
+    if (bucket) bucketScores[bucket].push({ score, weight: w });
+
+    const status = computeAutoStatus(row.actual, row.target, lowerIsBetter);
+    if (status === "on_track") onTrack++;
+    else if (status === "at_risk") atRisk++;
+    else if (status === "off_track") offTrack++;
   }
 
   return {
     ownScore: kpiScores.length > 0 ? weightedAverage(kpiScores) : 0,
-    financialScore: weightedAverage(perspectiveScores["Financial"]),
-    customerScore: weightedAverage(perspectiveScores["Customer"]),
-    internalProcessScore: weightedAverage(perspectiveScores["Internal Process"]),
-    learningGrowthScore: weightedAverage(perspectiveScores["Learning & Growth"]),
+    financialScore: weightedAverage(bucketScores.financial),
+    customerScore: weightedAverage(bucketScores.customer),
+    internalProcessScore: weightedAverage(bucketScores.internal_process),
+    learningGrowthScore: weightedAverage(bucketScores.learning_growth),
     onTrack,
     atRisk,
     offTrack,
@@ -149,7 +156,7 @@ export async function calculatePerformanceScores(
   // Load all scorecard rows for this tenant at once
   const { data: allRows } = await supabase
     .from("scorecard_rows")
-    .select("id, scorecard_id, perspective, actual, target, weight, status")
+    .select("id, scorecard_id, perspective, actual, target, objective_weight, lower_is_better, status")
     .eq("tenant_id", tenantId);
 
   const rowsByScorecardId = new Map<string, ScorecardRow[]>();

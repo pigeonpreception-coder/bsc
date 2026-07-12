@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { createAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
+import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
 
 // ─── Types matching the client hierarchy ─────────────────────
 
@@ -22,20 +22,6 @@ type PositionNode = {
   customFields: CustomField[];
   children: PositionNode[];
   titleOptions?: string[];
-};
-
-type ScorecardRowInput = {
-  perspective: string;
-  strategic_objective: string;
-  intended_result: string;
-  kpi: string;
-  baseline: string;
-  target: string;
-  unit: string;
-  weight: number;
-  initiative: string;
-  timeline: string;
-  notes: string;
 };
 
 // ─── Save Hierarchy ──────────────────────────────────────────
@@ -116,87 +102,9 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
 }
 
 // ─── AI BSC Generation ───────────────────────────────────────
-
-const SCORECARD_TOOL = {
-  name: "submit_scorecard",
-  description: "Submit Balanced Scorecard rows in the 14-column FCTS template.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      rows: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            perspective: {
-              type: "string",
-              enum: ["Financial", "Customer", "Internal Process", "Learning & Growth"],
-            },
-            strategic_objective: { type: "string" },
-            intended_result: { type: "string" },
-            kpi: { type: "string" },
-            baseline: { type: "string" },
-            target: { type: "string" },
-            unit: { type: "string" },
-            weight: { type: "number" },
-            initiative: { type: "string" },
-            timeline: { type: "string" },
-            notes: { type: "string" },
-          },
-          required: [
-            "perspective",
-            "strategic_objective",
-            "intended_result",
-            "kpi",
-            "baseline",
-            "target",
-            "unit",
-            "weight",
-            "initiative",
-            "timeline",
-          ],
-        },
-      },
-    },
-    required: ["rows"],
-  },
-};
-
-async function generateRows(prompt: string): Promise<ScorecardRowInput[]> {
-  const anthropic = createAnthropicClient();
-  const response = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4096,
-    tools: [SCORECARD_TOOL],
-    tool_choice: { type: "tool", name: "submit_scorecard" },
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const toolUse = response.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("AI did not return scorecard rows");
-  }
-  return (toolUse.input as { rows: ScorecardRowInput[] }).rows;
-}
-
-function rowsToInsert(rows: ScorecardRowInput[], scorecardId: string, tenantId: string) {
-  return rows.map((r, i) => ({
-    scorecard_id: scorecardId,
-    tenant_id: tenantId,
-    perspective: r.perspective,
-    strategic_objective: r.strategic_objective,
-    intended_result: r.intended_result,
-    kpi: r.kpi,
-    baseline: r.baseline,
-    target: r.target,
-    unit: r.unit,
-    weight: r.weight,
-    initiative: r.initiative,
-    timeline: r.timeline,
-    notes: r.notes ?? null,
-    sort_order: i,
-  }));
-}
+// generateRows / rowsToInsert / the 14-column tool schema all live in
+// @/lib/bsc-generation — the single source of truth (see that file's
+// header comment for why this must never be duplicated again).
 
 type OrgPositionRow = {
   id: string;
@@ -343,13 +251,13 @@ It must focus on daily/weekly/monthly deliverables, accuracy, productivity, and 
 Derive all objectives directly from the Section BSC above.
 Include only KPIs measurable at the individual level.
 Avoid strategic or organisational-level language entirely.
-Emphasise Internal Process and Learning & Growth BSC perspectives.
+Emphasise Internal Processes and Organisational Capacity BSC perspectives.
 
 Parent Section BSC:
 ${parentContext}
 
 Produce 3-5 scorecard rows representing this individual staff member's personal deliverables and KPIs.
-Use the 14-column FCTS template. Call submit_scorecard.`;
+Use the platform-standard 14-column template. Call submit_scorecard.`;
 
       const staffRows = await generateRows(staffPrompt);
 
@@ -405,7 +313,7 @@ Use the 14-column FCTS template. Call submit_scorecard.`;
     } else if (isSection) {
       levelLabel = "Process / Supervisory";
       bscFocus = `This is a Section BSC. Focus on the operational processes and outputs managed within this specific section.
-Emphasise Internal Process and Learning & Growth BSC perspectives.
+Emphasise Internal Processes and Organisational Capacity BSC perspectives.
 Include KPIs that are measurable at the section/unit level (e.g., turnaround time, accuracy rate, volume processed).
 Derive all objectives directly from the parent Department BSC above.`;
       rowCountHint = "4-6";
@@ -431,8 +339,8 @@ ${ai ? `Executive summary: ${ai.executive_summary}\nStrategic pillars: ${ai.stra
 Parent BSC rows:
 ${parentContext}
 
-Produce ${rowCountHint} scorecard rows covering all four BSC perspectives (Financial, Customer, Internal Process, Learning & Growth), each cascaded from and aligned with the parent BSC above.
-Use the 14-column FCTS template. Call submit_scorecard.`;
+Produce ${rowCountHint} scorecard rows covering all four BSC perspectives (Financial, Customer & Stakeholder, Internal Processes, Organisational Capacity), each cascaded from and aligned with the parent BSC above.
+Use the platform-standard 14-column template. Call submit_scorecard.`;
 
     const officeRows = await generateRows(officeBscPrompt);
 
@@ -477,7 +385,7 @@ Use the 14-column FCTS template. Call submit_scorecard.`;
 Focus on the supervisor's personal responsibility for section performance and team management.
 Be narrower in scope than the Section BSC.
 Include personal KPIs related to reporting, team coaching, and process compliance.
-Emphasise Internal Process and Customer perspectives.`;
+Emphasise Internal Processes and Customer & Stakeholder perspectives.`;
     } else if (isDepartment) {
       individualFocus = `This is a Department Manager Individual BSC.
 Focus on the manager's personal operational contributions, team leadership, and delivery accountability.`;
@@ -496,7 +404,7 @@ ${posName} BSC (the parent):
 ${officeContext}
 
 Produce 4-6 scorecard rows representing this individual's personal KPIs and contribution, cascaded from and aligned with the ${posName} BSC above.
-Use the 14-column FCTS template. Call submit_scorecard.`;
+Use the platform-standard 14-column template. Call submit_scorecard.`;
 
     const individualRows = await generateRows(individualPrompt);
 

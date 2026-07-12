@@ -3,101 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { createAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
-
-const PERSPECTIVES = ["Financial", "Customer", "Internal Process", "Learning & Growth"] as const;
-
-type ScorecardRowInput = {
-  perspective: (typeof PERSPECTIVES)[number];
-  strategic_objective: string;
-  intended_result: string;
-  kpi: string;
-  baseline: string;
-  target: string;
-  unit: string;
-  weight: number;
-  initiative: string;
-  timeline: string;
-  notes: string;
-};
-
-const SCORECARD_TOOL = {
-  name: "submit_scorecard",
-  description: "Submit Balanced Scorecard rows in the 14-column FCTS template.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      rows: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            perspective: { type: "string", enum: PERSPECTIVES },
-            strategic_objective: { type: "string" },
-            intended_result: { type: "string" },
-            kpi: { type: "string" },
-            baseline: { type: "string" },
-            target: { type: "string" },
-            unit: { type: "string" },
-            weight: { type: "number" },
-            initiative: { type: "string" },
-            timeline: { type: "string" },
-            notes: { type: "string" },
-          },
-          required: [
-            "perspective",
-            "strategic_objective",
-            "intended_result",
-            "kpi",
-            "baseline",
-            "target",
-            "unit",
-            "weight",
-            "initiative",
-            "timeline",
-          ],
-        },
-      },
-    },
-    required: ["rows"],
-  },
-};
-
-async function generateRows(prompt: string): Promise<ScorecardRowInput[]> {
-  const anthropic = createAnthropicClient();
-  const response = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4096,
-    tools: [SCORECARD_TOOL],
-    tool_choice: { type: "tool", name: "submit_scorecard" },
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const toolUse = response.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("AI did not return scorecard rows");
-  }
-  return (toolUse.input as { rows: ScorecardRowInput[] }).rows;
-}
-
-function rowsToInsert(rows: ScorecardRowInput[], scorecardId: string, tenantId: string) {
-  return rows.map((r, i) => ({
-    scorecard_id: scorecardId,
-    tenant_id: tenantId,
-    perspective: r.perspective,
-    strategic_objective: r.strategic_objective,
-    intended_result: r.intended_result,
-    kpi: r.kpi,
-    baseline: r.baseline,
-    target: r.target,
-    unit: r.unit,
-    weight: r.weight,
-    initiative: r.initiative,
-    timeline: r.timeline,
-    notes: r.notes ?? null,
-    sort_order: i,
-  }));
-}
+import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
 
 export async function generateBalancedScorecards(planId: string) {
   const user = await getCurrentUser();
@@ -130,7 +36,7 @@ Strategic pillars: ${ai.strategic_pillars.join("; ")}
 Strategic objectives: ${ai.strategic_objectives.map((o) => `[${o.perspective}] ${o.objective}`).join("; ")}
 KPIs already identified: ${ai.kpis.map((k) => `${k.kpi} (target: ${k.target ?? "n/a"})`).join("; ")}
 
-Produce 8-12 scorecard rows covering all four BSC perspectives (Financial, Customer, Internal Process, Learning & Growth), each with a strategic objective, intended result, KPI, baseline, target, unit, weight (%, weights per perspective should sum sensibly toward 100 overall), initiative/activity, and timeline within the ${plan.strategic_period_years}-year plan. Call submit_scorecard.`;
+Produce 8-12 scorecard rows covering all four BSC perspectives (Financial; Customer & Stakeholder; Internal Processes; Organisational Capacity), grouped by strategic objective. For each row give: strategic objective, strategic theme alignment (which pillar it ladders up to), intended result, key initiatives & their intended results, perspective weight (%; the four perspective weights sum to 100), objective weight (%; objectives sum to 100 within their perspective), KPI, unit, baseline, target, and measurement frequency. Set lower_is_better=true for cost/error/days-type KPIs. Do not set actuals — those are measured later. Call submit_scorecard.`;
 
   const corporateRows = await generateRows(corporatePrompt);
 

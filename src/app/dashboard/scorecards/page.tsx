@@ -16,6 +16,7 @@ export default async function ScorecardsPage() {
 
   const groups: Record<string, typeof scorecards> = {
     corporate: [],
+    executive: [],
     departmental: [],
     individual: [],
   };
@@ -27,7 +28,7 @@ export default async function ScorecardsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <h1 className="text-xl font-semibold text-navy">Balanced Scorecards</h1>
 
-      {(["corporate", "departmental", "individual"] as const).map((type) => (
+      {(["corporate", "executive", "departmental", "individual"] as const).map((type) => (
         <div key={type} className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="mb-3 text-sm font-semibold capitalize text-navy">{type}</h2>
           {groups[type] && groups[type]!.length > 0 ? (

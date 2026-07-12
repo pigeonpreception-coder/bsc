@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { computeProgressPercent, PERSPECTIVES } from "@/lib/scorecard";
+import { computeProgressPercent, perspectiveSortIndex } from "@/lib/scorecard";
 import PerformanceTrendChart from "./PerformanceTrendChart";
 import { PerformanceGauge, ScoreCard, KpiStatusSummary } from "./PerformanceWidgets";
 import TaskList from "./TaskList";
@@ -222,35 +222,42 @@ export default async function DashboardHomePage() {
     // Show the old corporate dashboard
     const { data: corporateRows } = await supabase
       .from("scorecard_rows")
-      .select("id, perspective, strategic_objective, kpi, actual, target, status")
+      .select("id, perspective, strategic_objective, kpi, actual, target, lower_is_better, status")
       .eq("scorecard_id", corporateScorecard.id);
 
     const { data: departmentalScorecards } = await supabase
       .from("scorecards")
-      .select("id, name, department_name, scorecard_rows(actual, target)")
+      .select("id, name, department_name, scorecard_rows(actual, target, lower_is_better)")
       .eq("plan_id", plan.id)
       .in("scorecard_type", ["departmental", "executive"]);
 
     const rows = corporateRows ?? [];
     const rowProgress = rows
-      .map((r) => computeProgressPercent(r.actual, r.target))
+      .map((r) => computeProgressPercent(r.actual, r.target, r.lower_is_better ?? false))
       .filter((p): p is number => p !== null)
       .map((p) => Math.min(p, 100));
     const overallCompletion = average(rowProgress);
 
-    const perspectiveBreakdown = PERSPECTIVES.map((perspective) => {
+    const perspectivesInUse = [...new Set(rows.map((r) => r.perspective))].sort(
+      (a, b) => perspectiveSortIndex(a) - perspectiveSortIndex(b),
+    );
+    const perspectiveBreakdown = perspectivesInUse.map((perspective) => {
       const perspectiveRows = rows.filter((r) => r.perspective === perspective);
       const progress = perspectiveRows
-        .map((r) => computeProgressPercent(r.actual, r.target))
+        .map((r) => computeProgressPercent(r.actual, r.target, r.lower_is_better ?? false))
         .filter((p): p is number => p !== null)
         .map((p) => Math.min(p, 100));
       return { perspective, completion: average(progress) };
     });
 
     const departmentSummary = (departmentalScorecards ?? []).map((sc) => {
-      const deptRows = (sc.scorecard_rows ?? []) as { actual: string | null; target: string | null }[];
+      const deptRows = (sc.scorecard_rows ?? []) as {
+        actual: string | null;
+        target: string | null;
+        lower_is_better: boolean | null;
+      }[];
       const progress = deptRows
-        .map((r) => computeProgressPercent(r.actual, r.target))
+        .map((r) => computeProgressPercent(r.actual, r.target, r.lower_is_better ?? false))
         .filter((p): p is number => p !== null)
         .map((p) => Math.min(p, 100));
       return { name: sc.department_name ?? sc.name, completion: average(progress) };

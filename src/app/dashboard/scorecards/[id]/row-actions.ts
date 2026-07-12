@@ -9,21 +9,24 @@ import { calculatePerformanceScores } from "@/lib/performance";
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
   "strategic_objective",
+  "strategic_theme_alignment",
   "intended_result",
+  "key_initiatives",
+  "perspective_weight",
+  "objective_weight",
   "kpi",
+  "unit",
   "baseline",
   "target",
+  "measurement_frequency",
   "actual",
-  "unit",
-  "weight",
-  "initiative",
   "responsible_person",
-  "timeline",
   "status",
-  "notes",
 ] as const;
 
 export type EditableField = (typeof ADMIN_EDITABLE_FIELDS)[number];
+
+const NUMERIC_FIELDS: EditableField[] = ["perspective_weight", "objective_weight"];
 
 async function loadContext(rowId: string) {
   const user = await getCurrentUser();
@@ -47,12 +50,11 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
   if (!canEdit) throw new Error("Not authorized to edit this field");
 
   const update: Record<string, unknown> = {
-    [field]: field === "weight" ? (value === "" ? null : Number(value)) : value,
+    [field]: NUMERIC_FIELDS.includes(field) ? (value === "" ? null : Number(value)) : value,
   };
 
   if (field === "actual") {
-    const autoStatus = computeAutoStatus(value, row.target);
-    if (autoStatus) update.status = autoStatus;
+    update.status = computeAutoStatus(value, row.target, row.lower_is_better ?? false);
   }
 
   const { error } = await supabase.from("scorecard_rows").update(update).eq("id", rowId);
@@ -105,6 +107,7 @@ export async function addScorecardRow(scorecardId: string) {
       perspective: "Financial",
       strategic_objective: "New objective",
       kpi: "New KPI",
+      status: "not_yet_measured",
       sort_order: nextSortOrder,
     })
     .select()

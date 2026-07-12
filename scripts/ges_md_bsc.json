@@ -1,0 +1,743 @@
+[
+  {
+    "perspective": "Financial",
+    "strategic_objective": "1. Drive Sustainable Revenue Growth & Global Diversification",
+    "strategic_theme_alignment": "Operational Excellence  |  Business Growth & Strategic Partnership  (Aligns to Corporate SO16 – Increase Revenue)",
+    "intended_result": "A scalable, market-driven revenue engine that accelerates regional and international expansion, grows recurring subscription income, and diversifies revenue through partner and digital channels — delivering N$600 million in FY2026/27 and a ≥ 25% CAGR toward the 2030 ambition.",
+    "key_initiatives": "1.1  Approve and drive an annual Group sales plan with territory-specific revenue targets.\n     ↳  Intended Result:  MD owns the revenue plan and holds EXCO to territory targets, anchoring the N$600m FY2026/27 goal.\n\n1.2  Lead the SADC and international market-entry programme.\n     ↳  Intended Result:  MD sequences and resources market entry country-by-country, steadily lifting the international revenue share.\n\n1.3  Embed a SaaS, subscription-first commercial model across the portfolio.\n     ↳  Intended Result:  MD shifts the commercial model toward recurring revenue, improving predictability, retention and valuation.\n\n1.4  Grow channel-partner revenue contribution.\n     ↳  Intended Result:  MD ties the partner programme to revenue targets so partners become a material, low-cost growth engine.\n\n1.5  Launch e-commerce and self-service revenue streams.\n     ↳  Intended Result:  MD prioritises a live digital channel so Green captures scalable, low-marginal-cost income from year two.\n\n1.6  Review revenue performance and pipeline conversion monthly at EXCO.\n     ↳  Intended Result:  MD tracks revenue against plan every month and intervenes early on shortfalls, protecting the annual target.\n\n1.7  Validate revenue history and targets against finance and CRM data.\n     ↳  Intended Result:  MD ensures targets are evidence-based and reconciled to NAV/CRM, giving the board credible numbers.\n\n1.8  Align product and pricing strategy to revenue diversification.\n     ↳  Intended Result:  MD ensures the product and pricing mix actively supports recurring and international revenue goals.",
+    "perspective_weight": 30.0,
+    "objective_weight": 8.0,
+    "rows": [
+      {
+        "kpi": "Total Green Group Revenue",
+        "unit": "N$",
+        "baseline": "To be established",
+        "target": "N$600 million",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Revenue growth rate (Year-on-Year)",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 25%  (CAGR ≥ 25% to 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Recurring & SaaS revenue as % of total revenue",
+        "unit": "%",
+        "baseline": "5%",
+        "target": "≥ 15%  (toward ≥ 60% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "International revenue as % of total revenue",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 10%  (toward ≥ 40% by 2030)",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "2. Deliver Profitability & Margin Expansion",
+    "strategic_theme_alignment": "Operational Excellence  (Aligns to Corporate SO17 – Increase Profit)",
+    "intended_result": "Disciplined profitability management — gross-margin optimisation, value-based pricing, SG&A discipline and prioritisation of high-margin products — that expands margins and aligns the whole organisation toward profitable, high-value growth.",
+    "key_initiatives": "2.1  Drive gross-margin optimisation per product line.\n     ↳  Intended Result:  MD reviews product-line margins and acts on under-performers, lifting blended gross margin each quarter.\n\n2.2  Review and approve a value-based pricing strategy annually.\n     ↳  Intended Result:  MD ensures pricing captures the value delivered rather than defaulting to cost-plus, protecting margin.\n\n2.3  Enforce SG&A discipline with overhead bounded as a % of revenue.\n     ↳  Intended Result:  MD caps overhead growth relative to revenue, preserving operating leverage as the business scales.\n\n2.4  Prioritise high-margin products in incentive and resource allocation.\n     ↳  Intended Result:  MD aligns sales incentives and investment to margin, steering effort toward profitable growth.\n\n2.5  Hold the CFO accountable for margin and profitability targets.\n     ↳  Intended Result:  MD reviews margin dashboards at EXCO so profitability is actively managed, not merely measured.\n\n2.6  Convert cost-efficiency gains into margin improvement.\n     ↳  Intended Result:  MD ensures operational savings drop to the bottom line rather than being silently re-absorbed.\n\n2.7  Govern discounting and deal profitability thresholds.\n     ↳  Intended Result:  MD sets approval gates for low-margin deals, protecting profitability discipline across sales.",
+    "perspective_weight": 30.0,
+    "objective_weight": 7.0,
+    "rows": [
+      {
+        "kpi": "Gross Profit Margin",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 38%  (toward ≥ 45% by year 3)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "EBITDA Margin",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 12%  (toward ≥ 20% by year 4)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Net Profit Margin",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 8%  (toward ≥ 12% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SG&A as % of revenue (overhead discipline)",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Bounded & declining year-on-year",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "3. Optimise Return on Investment & Capital Governance",
+    "strategic_theme_alignment": "Operational Excellence  (Aligns to Corporate SO18 – Increase ROI)",
+    "intended_result": "Rigorous capital governance — product-level P&L tracking, a Board Capital Allocation Committee, disciplined business cases and payback thresholds — enabling informed investment decisions, financial accountability and optimised returns on capital.",
+    "key_initiatives": "3.1  Establish dedicated product-level P&L tracking.\n     ↳  Intended Result:  MD requires a P&L per product so investment decisions are grounded in real, comparable returns.\n\n3.2  Constitute and chair a Board Capital Allocation Committee.\n     ↳  Intended Result:  MD works with the board to govern capital deployment with rigour, transparency and accountability.\n\n3.3  Require an annual business-case review for all major capital expenditure.\n     ↳  Intended Result:  MD ensures every major investment is justified, tracked and reviewed against its original case.\n\n3.4  Enforce a five-year payback threshold on capital projects.\n     ↳  Intended Result:  MD applies a consistent payback discipline so capital flows only to the strongest-return opportunities.\n\n3.5  Track ROI and ROCE as standing board metrics.\n     ↳  Intended Result:  MD tables return metrics each board cycle so capital efficiency stays continuously visible.\n\n3.6  Sequence capital toward the highest-return strategic initiatives.\n     ↳  Intended Result:  MD phases capex to maximise return within the available cash envelope, avoiding over-extension.\n\n3.7  Hold owners accountable for delivering business-case returns.\n     ↳  Intended Result:  MD reviews realised versus projected returns, closing the accountability loop on every investment.",
+    "perspective_weight": 30.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "ROI on product-development investment",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Tracking live  (toward > 25% by year 4)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Return on Capital Employed (ROCE)",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Baseline set  (toward ≥ 15% by year 4)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Payback period on capital projects",
+        "unit": "Years",
+        "baseline": "To be established",
+        "target": "≤ 5 years on all approved projects",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Board Capital Allocation Committee operational",
+        "unit": "Milestone",
+        "baseline": "Not established",
+        "target": "Established & active",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "4. Drive Cost Discipline & Structural Efficiency",
+    "strategic_theme_alignment": "Operational Excellence  (Aligns to Corporate SO15 – Reduce Costs)",
+    "intended_result": "A cost-optimised, well-governed financial operating model — zero-based budgeting, supplier consolidation, a shared-services model and cloud-cost optimisation — that strengthens procurement control and enables sustainable margin improvement and competitive pricing.",
+    "key_initiatives": "4.1  Mandate an annual zero-based budgeting exercise.\n     ↳  Intended Result:  MD requires every cost to be justified from zero each year, systematically eliminating legacy waste.\n\n4.2  Drive a supplier-consolidation and renegotiation programme.\n     ↳  Intended Result:  MD consolidates spend to fewer, better-priced suppliers, improving terms, control and leverage.\n\n4.3  Implement a shared-services model for back-office functions.\n     ↳  Intended Result:  MD centralises support functions to cut duplication and lower unit cost as Green scales across markets.\n\n4.4  Establish a procurement framework with formal controls.\n     ↳  Intended Result:  MD institutes procurement governance so all spend is controlled, competitive and compliant.\n\n4.5  Launch a cloud-cost-optimisation programme.\n     ↳  Intended Result:  MD tracks and optimises cloud spend so infrastructure cost scales efficiently with actual usage.\n\n4.6  Set, monitor and drive down the cost-to-revenue ratio.\n     ↳  Intended Result:  MD reviews the cost ratio quarterly, steering it toward the < 55% target by 2029.\n\n4.7  Hold EXCO accountable for cost-efficiency improvements.\n     ↳  Intended Result:  MD makes efficiency a shared leadership target, embedding cost discipline into the culture.",
+    "perspective_weight": 30.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Cost-to-revenue ratio",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≤ 65%  (toward < 55% by 2029)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Year-on-Year cost-efficiency improvement",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Baseline set  (5% p.a. from year 2)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Procurement framework & controls in place",
+        "unit": "Milestone",
+        "baseline": "Informal",
+        "target": "Implemented & enforced",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Cloud-cost optimisation savings",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Programme live with measured savings",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "5. Secure Capital Investment & a Sustainable Funding Engine",
+    "strategic_theme_alignment": "Operational Excellence  |  Future-Ready Innovation  (Aligns to Corporate SO19 – Increase Capital Investment)",
+    "intended_result": "A strong, sustainable capital and innovation engine — DFI engagement, a retained-earnings reinvestment policy, asset-financing facilities, ring-fenced R&D and a strategic equity-partner pathway — that funds disciplined reinvestment and long-term growth without over-gearing the balance sheet.",
+    "key_initiatives": "5.1  Lead a Development Finance engagement programme (DBN, AfDB, IFC).\n     ↳  Intended Result:  MD personally drives development-finance relationships to unlock strategic, patient growth funding.\n\n5.2  Adopt a retained-earnings reinvestment policy (≈ 40% of net profit).\n     ↳  Intended Result:  MD secures board approval for disciplined reinvestment, funding growth from internally generated cash.\n\n5.3  Establish an asset-financing facility for regional print-business scaling.\n     ↳  Intended Result:  MD arranges financing so the recurring print business can scale regionally without straining capital.\n\n5.4  Ring-fence the R&D budget at 8–10% of revenue.\n     ↳  Intended Result:  MD protects R&D funding through the budget cycle so product innovation continues even under pressure.\n\n5.5  Evaluate a strategic equity partner in years three to four.\n     ↳  Intended Result:  MD prepares Green for institutional investment by building the governance and track record investors require.\n\n5.6  Maintain a conservative debt-to-equity ratio (below 0.5).\n     ↳  Intended Result:  MD governs gearing so the balance sheet stays resilient throughout the expansion programme.\n\n5.7  Present the capital and funding plan to the board for approval.\n     ↳  Intended Result:  MD secures board endorsement of the funding strategy, aligning capital firmly to the growth plan.",
+    "perspective_weight": 30.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Annual capital investment",
+        "unit": "N$",
+        "baseline": "To be established",
+        "target": "Plan funded & growing (≈ 20% p.a.)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Debt-to-equity ratio",
+        "unit": "Ratio",
+        "baseline": "To be established",
+        "target": "Below 0.5",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "R&D spend as % of revenue",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "8–10% of revenue",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "DFI / funding facilities advanced",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 1 engagement advanced (DBN/AfDB/IFC)",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "6. Deliver Outstanding Stakeholder Satisfaction & Service Excellence",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO10 – Improve Stakeholder Satisfaction)",
+    "intended_result": "A high-touch, stakeholder-centric engagement model — account ownership, structured onboarding, 24/7 multilingual support and continuous feedback — that drives strong relationships, rising satisfaction scores and long-term retention across all segments.",
+    "key_initiatives": "6.1  Assign a Customer Success / Account Executive to every enterprise account.\n     ↳  Intended Result:  MD mandates account ownership so every major client has a single, accountable relationship owner.\n\n6.2  Establish structured stakeholder onboarding programmes.\n     ↳  Intended Result:  MD requires a consistent onboarding standard so clients realise value quickly and start strong.\n\n6.3  Institute quarterly satisfaction reviews and an annual NPS programme.\n     ↳  Intended Result:  MD reviews NPS/CSAT trends and acts on detractors, making satisfaction a managed strategic metric.\n\n6.4  Stand up a 24/7 multilingual support desk with published SLAs.\n     ↳  Intended Result:  MD resources round-the-clock support so Green can credibly serve multiple time zones and markets.\n\n6.5  Centralise and manage all SLAs through the CRM.\n     ↳  Intended Result:  MD requires SLA tracking in CRM so adherence is visible, enforceable and reportable.\n\n6.6  Convene a Client Advisory Board twice a year.\n     ↳  Intended Result:  MD personally engages top clients for strategic feedback, strengthening loyalty and product direction.\n\n6.7  Hold the COO accountable for satisfaction and SLA outcomes.\n     ↳  Intended Result:  MD makes service metrics a standing EXCO item so service excellence is continuously owned.\n\n6.8  Drive rapid Priority-1 incident resolution and root-cause discipline.\n     ↳  Intended Result:  MD sets the four-hour P1 standard and reviews every breach, protecting client trust.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Net Promoter Score (NPS)",
+        "unit": "Score",
+        "baseline": "To be established",
+        "target": "≥ 50  (toward ≥ 70 by 2030)",
+        "measurement_frequency": "Bi-Annual"
+      },
+      {
+        "kpi": "Customer Satisfaction (CSAT)",
+        "unit": "out of 5",
+        "baseline": "To be established",
+        "target": "≥ 4.0  (toward ≥ 4.2 by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SLA adherence rate",
+        "unit": "%",
+        "baseline": "90%",
+        "target": "≥ 95%  (toward ≥ 97% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Priority-1 incident resolution time",
+        "unit": "Hours",
+        "baseline": "To be established",
+        "target": "≤ 4 hours",
+        "measurement_frequency": "Monthly"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "7. Build a Global Strategic Partnership Ecosystem",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO11 – Improve & Increase Partnerships)  ★ MD-OWNED",
+    "intended_result": "A strong global partnership ecosystem — a tiered channel programme, OEM alliances, government-to-government relationships and DFI/institutional engagement — that multiplies market access and revenue without proportional fixed cost, active across ten or more countries by 2030.",
+    "key_initiatives": "7.1  Design and launch the Green Channel Partner Programme.\n     ↳  Intended Result:  MD approves the programme design and incentives so partners have a clear, attractive path to sell Green.\n\n7.2  Implement a tiered partner structure (Gold, Silver, Bronze).\n     ↳  Intended Result:  MD sets tier benefits and obligations so partner effort is matched proportionally to reward.\n\n7.3  Drive a government-to-government introduction programme via MIR.\n     ↳  Intended Result:  MD leverages diplomatic and ministry channels to open doors in priority expansion markets.\n\n7.4  Secure OEM agreements (Dell, HP, Cisco, AWS, Microsoft).\n     ↳  Intended Result:  MD personally sponsors top OEM relationships, unlocking co-sell, credibility and technology access.\n\n7.5  Engage Pan-African institutions (AfDB, African Union, COMESA).\n     ↳  Intended Result:  MD builds institutional relationships that provide reach, funding and legitimacy for expansion.\n\n7.6  Appoint a Business Development Manager to own the partner pipeline.\n     ↳  Intended Result:  MD creates dedicated BD capacity so partnership growth has a clear owner, cadence and accountability.\n\n7.7  Secure professional-body memberships across key disciplines.\n     ↳  Intended Result:  MD funds memberships that confer credibility and network access in target sectors and markets.\n\n7.8  Review partner contribution and satisfaction at EXCO.\n     ↳  Intended Result:  MD tracks partner revenue and health so under-performing partnerships are addressed promptly.",
+    "perspective_weight": 25.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Number of active strategic partners",
+        "unit": "#",
+        "baseline": "To be established",
+        "target": "≥ 15  (toward ≥ 50 by 2029)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Partner revenue as % of Green revenue",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 10%  (toward ≥ 25% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Countries with active partner agreements",
+        "unit": "#",
+        "baseline": "1",
+        "target": "≥ 3  (toward ≥ 10 by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Partner satisfaction score",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 80%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "8. Elevate Global Brand Recognition & Market Influence",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO12 – Increase Brand Recognition)  ★ MD-OWNED",
+    "intended_result": "A strong, consistent global brand recognised in ten or more countries by 2030 — amplified through thought leadership, international media and conferences, with the MD and CTIO as visible brand voices — building visibility, credibility and market influence.",
+    "key_initiatives": "8.1  Commission an international brand and visual-identity refresh.\n     ↳  Intended Result:  MD approves a global-ready brand identity so Green presents consistently and credibly across markets.\n\n8.2  Drive a multilingual website and global digital content strategy.\n     ↳  Intended Result:  MD resources content that builds awareness and feeds demand generation in international markets.\n\n8.3  Launch a thought-leadership publication programme.\n     ↳  Intended Result:  MD positions Green's expertise publicly, differentiating it sharply from regional peers.\n\n8.4  Execute an international conference and media strategy.\n     ↳  Intended Result:  MD prioritises high-value events and media placements so Green earns visibility in target markets.\n\n8.5  Act as lead brand ambassador alongside the CTIO.\n     ↳  Intended Result:  MD personally represents Green at key forums, lending credibility and a human face to the brand.\n\n8.6  Build a case-study and reference engine from client successes.\n     ↳  Intended Result:  MD requires every flagship win to produce a publishable case study, fuelling credibility and sales.\n\n8.7  Pursue annual industry-award applications.\n     ↳  Intended Result:  MD targets credible awards that independently validate Green's standing to clients and partners.\n\n8.8  Monitor brand awareness and sentiment in target markets.\n     ↳  Intended Result:  MD tracks brand metrics so investment flows to the markets and channels that move recognition.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Brand awareness score (target markets)",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "Baseline established + measurable uplift",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "LinkedIn followers & engagement",
+        "unit": "#",
+        "baseline": "To be established",
+        "target": "Growth toward 10,000 by year 3",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Case studies / success stories published",
+        "unit": "# / year",
+        "baseline": "To be established",
+        "target": "≥ 12",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "International conference / media appearances",
+        "unit": "# / year",
+        "baseline": "To be established",
+        "target": "≥ 4",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "9. Maximise Stakeholder & Talent Retention",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO13 – Increase Stakeholder Retention)",
+    "intended_result": "A proactive retention and talent-management model — client health scoring, loyalty incentives, disciplined renewals and competitive compensation — that protects client loyalty, renewal performance and employee engagement for sustained, stable growth.",
+    "key_initiatives": "9.1  Institute an annual client health assessment (Green / Amber / Red).\n     ↳  Intended Result:  MD requires early-warning client scoring so at-risk accounts are rescued before they churn.\n\n9.2  Launch a multi-year contract loyalty-incentive programme.\n     ↳  Intended Result:  MD approves incentives that reward longer commitments, improving revenue predictability and retention.\n\n9.3  Implement a 90-day renewal-management process.\n     ↳  Intended Result:  MD mandates structured, early renewal management so contracts renew on time and on value.\n\n9.4  Benchmark compensation annually against the regional ICT market.\n     ↳  Intended Result:  MD ensures pay stays competitive so Green retains scarce technical and leadership talent.\n\n9.5  Require an annual career-development plan for every employee.\n     ↳  Intended Result:  MD ties development to retention, giving staff a clear reason to grow their careers with Green.\n\n9.6  Hold EXCO accountable for client and employee retention.\n     ↳  Intended Result:  MD reviews retention metrics at EXCO so loyalty is actively managed across the whole business.\n\n9.7  Convert satisfaction and exit insights into retention actions.\n     ↳  Intended Result:  MD ensures feedback translates into concrete retention improvements, not just reports.",
+    "perspective_weight": 25.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Client retention rate",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 88%  (toward ≥ 90% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Employee retention rate",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 82%  (toward ≥ 85% by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Contract renewal rate",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 90%  (toward ≥ 92% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Average client tenure",
+        "unit": "Years",
+        "baseline": "To be established",
+        "target": "≥ 2.5  (toward ≥ 3 by 2030)",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "10. Drive Scalable, Multi-Channel Customer Acquisition",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO14 – Increase Customer Base)",
+    "intended_result": "A data-driven, multi-channel growth engine — structured per-market sales plans, a transparent CRM pipeline, e-commerce self-service and partner-led demand generation — delivering scalable customer and revenue growth across SADC and international markets.",
+    "key_initiatives": "10.1  Mandate a structured sales plan per market with monthly accountability.\n     ↳  Intended Result:  MD sets territory targets and reviews them monthly so sales execution stays disciplined and visible.\n\n10.2  Require a full CRM-tracked pipeline with sales-stage transparency.\n     ↳  Intended Result:  MD makes the CRM pipeline the single source of sales truth, enabling accurate forecasting.\n\n10.3  Launch e-commerce self-service trial and purchase capability.\n     ↳  Intended Result:  MD prioritises self-service buying so Green can acquire customers at low marginal cost across borders.\n\n10.4  Drive a channel-partner-generated lead programme.\n     ↳  Intended Result:  MD ties partner incentives to qualified leads, multiplying reach beyond the direct sales team.\n\n10.5  Run digital demand generation across SADC priority markets.\n     ↳  Intended Result:  MD resources targeted digital campaigns that consistently feed the pipeline in expansion markets.\n\n10.6  Maintain pipeline coverage at three times the revenue target.\n     ↳  Intended Result:  MD enforces 3x pipeline discipline so revenue targets are underpinned by sufficient opportunity.\n\n10.7  Manage and steadily reduce Customer Acquisition Cost.\n     ↳  Intended Result:  MD tracks CAC by channel and shifts spend toward the most efficient acquisition channels.\n\n10.8  Review acquisition performance and conversion at EXCO.\n     ↳  Intended Result:  MD holds sales leadership to conversion and acquisition targets every quarter.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "New enterprise clients per year",
+        "unit": "#",
+        "baseline": "To be established",
+        "target": "≥ 15  (toward ≥ 30 by year 3)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Countries with active paying clients",
+        "unit": "#",
+        "baseline": "1",
+        "target": "≥ 3  (toward ≥ 10 by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Customer Acquisition Cost (CAC)",
+        "unit": "N$",
+        "baseline": "To be established",
+        "target": "Establish baseline & reduce",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Sales pipeline value vs revenue target",
+        "unit": "Multiple",
+        "baseline": "To be established",
+        "target": "≥ 3x revenue target",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "11. Achieve Operational Excellence through Standardised, Automated Processes",
+    "strategic_theme_alignment": "Operational Excellence  (Aligns to Corporate SO6 – Operational Efficiency)",
+    "intended_result": "An integrated, automated operating model with fully documented, enforced and digitised core processes, Green's own ERP/PMS deployed internally, and real-time delivery visibility — the efficiency and scalability required to grow globally without proportional cost growth.",
+    "key_initiatives": "11.1  Mandate documentation, approval and digitisation of all core processes.\n     ↳  Intended Result:  MD sets a 100%-by-2027 target and reviews progress, converting tacit know-how into enforced processes.\n\n11.2  Champion internal deployment of Green's own ERP and PMS.\n     ↳  Intended Result:  MD requires Green to run on its own products, improving them and creating powerful client reference cases.\n\n11.3  Drive a back-office process-automation programme.\n     ↳  Intended Result:  MD prioritises automation of repetitive functions, freeing capacity and lowering unit cost as volume scales.\n\n11.4  Commission and resource the ISO 9001 quality-management system.\n     ↳  Intended Result:  MD sponsors ISO 9001 implementation so quality is systematised ahead of major international contracts.\n\n11.5  Adopt a stage-gate project-delivery framework enterprise-wide.\n     ↳  Intended Result:  MD enforces stage-gate discipline so projects deliver on time and on quality, lifting on-time delivery.\n\n11.6  Hold the COO accountable for delivery and efficiency metrics.\n     ↳  Intended Result:  MD reviews delivery and efficiency dashboards at EXCO, embedding operational accountability.\n\n11.7  Deploy real-time operational reporting and PMO oversight.\n     ↳  Intended Result:  MD requires a single source of delivery truth so issues are surfaced and resolved early.\n\n11.8  Institutionalise continuous-improvement (lessons-learned) reviews.\n     ↳  Intended Result:  MD mandates post-project reviews so process improvements compound over time across the business.",
+    "perspective_weight": 20.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Core processes documented & digitised",
+        "unit": "%",
+        "baseline": "70%",
+        "target": "100% documented & digitised",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "On-time project delivery rate",
+        "unit": "%",
+        "baseline": "30%",
+        "target": "≥ 75%  (toward ≥ 85% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Internal deployment of Green's own products",
+        "unit": "%",
+        "baseline": "40% ERP / 60% CRM",
+        "target": "100% ERP & CRM internally",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "ISO 9001 QMS implementation",
+        "unit": "Milestone",
+        "baseline": "Not implemented",
+        "target": "Implementation underway",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "12. Build a Connected, Transparent Communication & Engagement Ecosystem",
+    "strategic_theme_alignment": "Operational Excellence  |  Business Growth  (Aligns to Corporate SO7 – Improve Communication)",
+    "intended_result": "A connected, transparent engagement ecosystem with strong internal alignment, a high-quality CRM, a unified multilingual digital presence and a maintained stakeholder-engagement plan that strengthens relationships and supports data-driven decisions.",
+    "key_initiatives": "12.1  Launch an internal knowledge-sharing and collaboration platform.\n     ↳  Intended Result:  MD sponsors a single knowledge hub so institutional knowledge is captured and shared as Green scales.\n\n12.2  Approve and maintain a formal Stakeholder Engagement Plan.\n     ↳  Intended Result:  MD owns the top-tier relationships and ensures the plan is executed, reviewed and kept current.\n\n12.3  Drive a CRM upgrade and full adoption across the business.\n     ↳  Intended Result:  MD mandates CRM as the system of record and reviews data quality, ending fragmented stakeholder data.\n\n12.4  Commission a multilingual website and global content strategy.\n     ↳  Intended Result:  MD resources a unified digital presence that actively supports SADC and international market entry.\n\n12.5  Establish quarterly all-staff meetings and leadership messaging.\n     ↳  Intended Result:  MD personally leads all-staff updates, aligning the entire organisation behind the strategy.\n\n12.6  Standardise external communication and brand-messaging governance.\n     ↳  Intended Result:  MD ensures consistent, compliant messaging across all channels, protecting Green's reputation.\n\n12.7  Hold EXCO accountable for stakeholder-engagement adherence.\n     ↳  Intended Result:  MD tracks engagement-plan execution at EXCO so relationships are managed proactively, not reactively.",
+    "perspective_weight": 20.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Internal communication satisfaction score",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 80%",
+        "measurement_frequency": "Bi-Annual"
+      },
+      {
+        "kpi": "CRM data quality index",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 85%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Stakeholder Engagement Plan adherence",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "100%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Quarterly all-staff meetings held",
+        "unit": "%",
+        "baseline": "Ad hoc",
+        "target": "100%  (4 of 4)",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "13. Embed World-Class Compliance, Certification & Standards",
+    "strategic_theme_alignment": "Future-Ready Innovation  |  Operational Excellence  (Aligns to Corporate SO8 – Improve & Increase Compliance)",
+    "intended_result": "A robust compliance and governance framework delivering internationally recognised security, quality and service certifications, with continuous monitoring, clear accountability and audit-driven improvement that unlocks regulated and international markets.",
+    "key_initiatives": "13.1  Set and sequence the international certification roadmap.\n     ↳  Intended Result:  MD prioritises certifications (ISO 27001, 9001, 22301, 20000-1; PCI DSS; SOC 2) as market-access enablers.\n\n13.2  Appoint and empower a dedicated Compliance lead.\n     ↳  Intended Result:  MD creates clear single-point accountability for compliance, ending diffuse ownership across teams.\n\n13.3  Sequence PCI DSS with Fintech commercialisation.\n     ↳  Intended Result:  MD aligns PCI DSS timing to the Fintech go-live so payment products launch fully compliant.\n\n13.4  Institute annual internal and external compliance audits.\n     ↳  Intended Result:  MD mandates an audit calendar and reviews findings, driving audit-led continuous improvement.\n\n13.5  Establish continuous compliance monitoring and reporting.\n     ↳  Intended Result:  MD requires ongoing monitoring so issues are caught and closed before they become incidents.\n\n13.6  Embed security and quality standards into product and delivery.\n     ↳  Intended Result:  MD ensures certifications translate into day-to-day controls, not just paper compliance.\n\n13.7  Report compliance status and open findings to the board.\n     ↳  Intended Result:  MD tables a compliance dashboard so the board can oversee risk and hold management accountable.",
+    "perspective_weight": 20.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Active international certifications",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 1  (ISO 27001; ISO 9001 by 2027)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Open audit findings at any point",
+        "unit": "#",
+        "baseline": "To be established",
+        "target": "Fewer than 3 open",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Critical compliance incidents",
+        "unit": "#",
+        "baseline": "To be established",
+        "target": "Zero (0)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Compliance lead appointed & audit calendar active",
+        "unit": "Milestone",
+        "baseline": "None",
+        "target": "Appointed & active",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "14. Institutionalise Governance through a Robust Policy Framework",
+    "strategic_theme_alignment": "Operational Excellence  (Aligns to Corporate SO9 – Improve Policies)",
+    "intended_result": "A comprehensive, current and audited internal and external policy framework — published, accessible, embedded in standard templates and reinforced by mandatory training — that drives operational efficiency, compliance and stakeholder accountability.",
+    "key_initiatives": "14.1  Commission a comprehensive internal policy framework.\n     ↳  Intended Result:  MD mandates standardised internal policies driving efficiency, compliance and accountability by 2027.\n\n14.2  Commission an external policy framework (customer, supplier, partner).\n     ↳  Intended Result:  MD ensures ethical, transparent, compliant policies govern all external relationships.\n\n14.3  Establish a central policy repository (SharePoint / EDRMS).\n     ↳  Intended Result:  MD requires a single accessible source of approved policies, ending version-control risk.\n\n14.4  Institute an annual policy review and board-approval cycle.\n     ↳  Intended Result:  MD tables policies for board approval annually, keeping the framework current and well governed.\n\n14.5  Mandate annual compliance training for all staff.\n     ↳  Intended Result:  MD makes policy training compulsory and tracked, so policies are understood, not just published.\n\n14.6  Embed policies in standard operating templates and contracts.\n     ↳  Intended Result:  MD ensures policies are operationalised in everyday documents, materially lifting enforcement.\n\n14.7  Audit policy compliance and report enforcement levels.\n     ↳  Intended Result:  MD reviews enforcement metrics so policy adherence is measured and continuously improved.",
+    "perspective_weight": 20.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Policies current, approved & accessible",
+        "unit": "%",
+        "baseline": "Partial",
+        "target": "100% internal policies current",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Staff trained on mandatory policies",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "100% trained",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Policy audit compliance / enforcement score",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 95%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Central policy repository live",
+        "unit": "Milestone",
+        "baseline": "Not centralised",
+        "target": "Live & accessible",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "15. Develop a Future-Ready, Globally Certified Workforce",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  |  Future-Ready Innovation  (Aligns to Corporate SO1 – Improve & Increase Skills)",
+    "intended_result": "A high-performing, globally certified and continuously developing workforce whose technical, leadership, sales and compliance capabilities enable Green to compete and deliver to world-class standard across all markets.",
+    "key_initiatives": "15.1  Charter and resource the Green Academy as the internal L&D engine.\n     ↳  Intended Result:  MD approves the Academy mandate, budget and reporting line so structured learning runs by Q2.\n\n15.2  Approve a professional certification sponsorship scheme.\n     ↳  Intended Result:  MD ring-fences a certification budget (CISSP, PMP, AWS, CPA, CISA) and ties it to retention bonds.\n\n15.3  Establish a graduate, internship and Work-Integrated-Learning pipeline.\n     ↳  Intended Result:  MD mandates an annual graduate intake and partners with universities to build a loyal talent feeder.\n\n15.4  Launch a diaspora and specialist talent-attraction initiative.\n     ↳  Intended Result:  MD sponsors targeted outreach to tech diaspora and scarce-skill specialists to close capability gaps.\n\n15.5  Institutionalise a soft-skills and leadership development track.\n     ↳  Intended Result:  MD requires every employee to hold a development plan, lifting delivery quality and client confidence.\n\n15.6  Hold EXCO accountable for closing the annual skills-gap assessment.\n     ↳  Intended Result:  MD reviews the skills-gap closure plan quarterly so gaps convert into funded training, not backlog.\n\n15.7  Link individual development plans to performance and reward.\n     ↳  Intended Result:  MD makes development-plan completion a performance gate, embedding continuous learning in the culture.\n\n15.8  Sponsor participation in global technology conferences and bodies.\n     ↳  Intended Result:  MD approves curated external exposure so key staff stay current and bring capability back in-house.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Training hours per employee (annually)",
+        "unit": "Hours",
+        "baseline": "To be established",
+        "target": "≥ 80  (toward ≥ 160 by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Staff with active professional certifications",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 40%  (toward ≥ 90% by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Graduate / WIL interns recruited",
+        "unit": "# / year",
+        "baseline": "WIL induction",
+        "target": "≥ 5",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Green Academy (L&D platform) established",
+        "unit": "Milestone",
+        "baseline": "Not established",
+        "target": "Established & operational",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "16. Drive World-Class Capacity Building, Governance & Succession",
+    "strategic_theme_alignment": "Future-Ready Innovation  |  Operational Excellence  (Aligns to Corporate SO2 – Improve Capacity Building)  ★ MD & CHAIR-OWNED",
+    "intended_result": "Green is an internationally recognised, well-governed organisation with a complete certification calendar, robust board sub-committees and full succession cover for every senior role — institutional credibility that underpins global market entry and investor confidence.",
+    "key_initiatives": "16.1  Own and drive the international certification calendar.\n     ↳  Intended Result:  MD sets certification sequencing and milestones at board level (ISO 27001 → PCI DSS → ISO 9001).\n\n16.2  Establish and activate the board sub-committees.\n     ↳  Intended Result:  MD works with the Chair to constitute and convene Audit & Risk, HR & Remuneration and Strategy committees.\n\n16.3  Complete a corporate structure and governance review.\n     ↳  Intended Result:  MD commissions a structure review aligning org design and delegations to the global-scale operating model.\n\n16.4  Implement succession planning for all senior and critical roles.\n     ↳  Intended Result:  MD mandates documented succession and development plans, removing single-point-of-failure risk.\n\n16.5  Introduce cross-functional development rotations for high-potentials.\n     ↳  Intended Result:  MD sponsors structured rotations so future leaders gain enterprise-wide experience ahead of expansion.\n\n16.6  Commission external technology and governance benchmarking.\n     ↳  Intended Result:  MD requires periodic benchmarking against global ICT peers so capacity-building stays world-class.\n\n16.7  Secure board approval and resourcing for the governance roadmap.\n     ↳  Intended Result:  MD presents a funded roadmap to the board, converting governance ambitions into resourced commitments.\n\n16.8  Report capacity-building and governance progress to the board quarterly.\n     ↳  Intended Result:  MD tables a standing governance dashboard so the board can hold management accountable for milestones.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Active international certifications held",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 1 (ISO 27001 secured; ISO 9001 in progress)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Succession plan coverage (senior roles)",
+        "unit": "%",
+        "baseline": "≈ 50%",
+        "target": "100% of senior roles",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Board sub-committees operational",
+        "unit": "#",
+        "baseline": "Partial",
+        "target": "All 3 fully operational",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Corporate structure & governance review completed",
+        "unit": "Yes/No",
+        "baseline": "No",
+        "target": "Yes",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "17. Strengthen Leadership & a High-Performance, Inclusive Culture",
+    "strategic_theme_alignment": "Business Growth & Strategic Partnership  (Aligns to Corporate SO3 – Strengthen Leadership & Culture)",
+    "intended_result": "A values-driven, engaged and inclusive organisation where diversity drives innovation, leadership models Green's values, and engagement and retention metrics rank Green among the region's employers of choice.",
+    "key_initiatives": "17.1  Commission an annual culture and engagement survey with published action plans.\n     ↳  Intended Result:  MD sponsors the survey and personally signs off the action plan, signalling engagement is a priority.\n\n17.2  Launch a values-integration leadership programme.\n     ↳  Intended Result:  MD leads from the front, embedding Teamwork, Integrity, People, Autonomy, Innovation and Diversity.\n\n17.3  Adopt a Diversity & Inclusion framework with measurable targets.\n     ↳  Intended Result:  MD sets and tracks D&I targets, including female leadership, so inclusion becomes measurable.\n\n17.4  Implement an employee wellbeing and recognition programme.\n     ↳  Intended Result:  MD resources wellbeing and recognition that protect morale and energy through a demanding growth phase.\n\n17.5  Cascade the strategy and scorecard to every employee.\n     ↳  Intended Result:  MD ensures line-of-sight from individual goals to corporate strategy, strengthening engagement.\n\n17.6  Hold EXCO accountable for engagement and turnover in their units.\n     ↳  Intended Result:  MD makes people-metrics a standing EXCO item so leaders own retention within their teams.\n\n17.7  Champion transparent, two-way internal communication.\n     ↳  Intended Result:  MD hosts regular all-staff forums, building trust and reinforcing a culture of openness.\n\n17.8  Model values-based consequence management.\n     ↳  Intended Result:  MD ensures recognition and accountability are applied consistently, protecting cultural integrity.",
+    "perspective_weight": 25.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Employee Engagement Index",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≥ 70%  (toward ≥ 75% by 2030)",
+        "measurement_frequency": "Bi-Annual"
+      },
+      {
+        "kpi": "Voluntary staff turnover rate",
+        "unit": "%",
+        "baseline": "To be established",
+        "target": "≤ 18%  (toward < 15% by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Female representation in leadership",
+        "unit": "%",
+        "baseline": "≈ 30%",
+        "target": "≥ 33%  (toward ≥ 40% by 2030)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Engagement-survey action plans published",
+        "unit": "Yes/No",
+        "baseline": "No",
+        "target": "Yes",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "18. Drive Product Innovation & Global SaaS Commercialisation",
+    "strategic_theme_alignment": "Future-Ready Innovation  (Aligns to Corporate SO4 – Increase & Improve Product Offering)",
+    "intended_result": "A scalable, AI-driven, cloud-native SaaS portfolio — at least six products commercially live and travelling to multiple markets — supported by disciplined R&D, strong product ownership and enterprise-grade distribution that grows recurring revenue.",
+    "key_initiatives": "18.1  Mandate a dedicated Product Focus Team and product owner per product.\n     ↳  Intended Result:  MD approves the product-team operating model so each product has clear ownership, roadmap and accountability.\n\n18.2  Confirm multi-tenant, cloud-native architecture for all products.\n     ↳  Intended Result:  MD makes multi-tenancy a non-negotiable standard, ensuring every product is built to travel across markets.\n\n18.3  Approve and integrate an AI capability roadmap across the suite.\n     ↳  Intended Result:  MD prioritises AI features so Green's offerings stay competitive with global alternatives.\n\n18.4  Establish the R&D function with a ring-fenced budget (8–10% of revenue).\n     ↳  Intended Result:  MD protects R&D investment through the budget cycle, sustaining innovation even under margin pressure.\n\n18.5  Secure cloud-marketplace listings (AWS, Azure) for flagship products.\n     ↳  Intended Result:  MD drives marketplace onboarding to unlock a global, low-cost distribution and discovery channel.\n\n18.6  Set and review a product-commercialisation pipeline (4 → 6 → 13).\n     ↳  Intended Result:  MD tracks the live-product count quarterly, holding the CTIO to the commercialisation schedule.\n\n18.7  Govern a stage-gate product-development and launch process.\n     ↳  Intended Result:  MD enforces stage-gates so only market-ready, quality-assured products launch, protecting brand and revenue.\n\n18.8  Tie product investment to recurring-revenue and SaaS-mix targets.\n     ↳  Intended Result:  MD allocates product investment toward the highest recurring-revenue potential, accelerating the SaaS shift.",
+    "perspective_weight": 25.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Software products commercially live",
+        "unit": "#",
+        "baseline": "4",
+        "target": "≥ 6  (toward 13 by 2029)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SaaS & product revenue as % of total",
+        "unit": "%",
+        "baseline": "5%",
+        "target": "≥ 15%  (toward ≥ 60% by 2030)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "R&D function established with ring-fenced budget",
+        "unit": "Milestone",
+        "baseline": "Informal",
+        "target": "Established & funded (8–10%)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Products listed on a cloud marketplace",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 1",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "19. Build Sovereign, Scalable Strategic ICT Infrastructure",
+    "strategic_theme_alignment": "Future-Ready Innovation  (Aligns to Corporate SO5 – Increase & Improve Infrastructure)",
+    "intended_result": "A secure, scalable digital foundation — Data Centre, 24/7 Security Operations Centre, trusted PKI digital-identity services and a live global e-commerce channel — that both underpins product delivery and generates accessible, recurring managed-services revenue.",
+    "key_initiatives": "19.1  Secure board approval and financing for the Data Centre build.\n     ↳  Intended Result:  MD presents the business case and capital plan to the board, unlocking funding for a strategic asset.\n\n19.2  Drive Data Centre design, build and commissioning to schedule.\n     ↳  Intended Result:  MD holds the CTIO to milestone dates and reviews progress quarterly, keeping the build on track.\n\n19.3  Recruit, deploy and commercialise the Security Operations Centre (SOC).\n     ↳  Intended Result:  MD resources SOC staffing and go-to-market so it begins signing managed-security clients within the year.\n\n19.4  Architect and launch the PKI / digital-identity service.\n     ↳  Intended Result:  MD champions PKI commercialisation, opening a trusted-identity revenue line for regulated clients.\n\n19.5  Launch the e-commerce self-service platform.\n     ↳  Intended Result:  MD prioritises a live e-commerce channel so Green can sell and onboard internationally at low fixed cost.\n\n19.6  Position infrastructure as both delivery backbone and revenue source.\n     ↳  Intended Result:  MD frames the Data Centre, SOC and PKI as profit centres, ensuring each carries a commercial mandate.\n\n19.7  Establish infrastructure SLAs, security and uptime governance.\n     ↳  Intended Result:  MD requires institutional-grade SLAs and controls so infrastructure can serve governments and regulated industries.\n\n19.8  Sequence infrastructure investment within the capital plan.\n     ↳  Intended Result:  MD phases infrastructure capex against cash generation and payback thresholds, protecting the balance sheet.",
+    "perspective_weight": 25.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Data Centre operational status",
+        "unit": "Milestone",
+        "baseline": "Not built",
+        "target": "Design & build commenced / Phase 1 live",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SOC commercial client count (managed security)",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 5  (toward ≥ 20 by 2029)",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "PKI digital-identity service launched",
+        "unit": "Milestone",
+        "baseline": "None",
+        "target": "Architected / pilot launched",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "E-commerce platform active monthly users",
+        "unit": "#",
+        "baseline": "0",
+        "target": "Platform live with measurable users",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  }
+]

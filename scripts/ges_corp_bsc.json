@@ -1,0 +1,743 @@
+[
+  {
+    "perspective": "Financial",
+    "strategic_objective": "SO16.  Increase Revenue",
+    "strategic_theme_alignment": "Business Growth & Partnership  |  Global Market Leadership",
+    "intended_result": "Achieve group revenue of N$600 million in FY 2026/2027, sustain ≥ 25% CAGR through 2030, grow recurring/SaaS revenue to ≥ 60% of total group revenue, and increase international revenue to ≥ 40% of total by 2030 through disciplined SADC, Pan-African and global expansion.",
+    "key_initiatives": "16.1  Approve and drive annual sales plan with territory-specific targets.\n16.2  Lead SADC and international market entry programme.\n16.3  Implement SaaS subscription-first commercial model group-wide.\n16.4  Grow channel-partner revenue contribution to ≥ 25% by 2030.\n16.5  Launch e-commerce and self-service revenue engine from Year 2.",
+    "perspective_weight": 30.0,
+    "objective_weight": 8.0,
+    "rows": [
+      {
+        "kpi": "Total Group Revenue",
+        "unit": "N$ M",
+        "baseline": "N$ TBD",
+        "target": "N$600 M by FY26/27",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Revenue Growth Rate (YoY)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 25% CAGR 2026–2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Recurring / SaaS Revenue Share",
+        "unit": "%",
+        "baseline": "5%",
+        "target": "≥ 60% by 2030",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "International Revenue Share",
+        "unit": "%",
+        "baseline": "0%",
+        "target": "≥ 40% by 2030",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "SO17.  Increase Profit",
+    "strategic_theme_alignment": "Operational Excellence",
+    "intended_result": "Deliver disciplined profitability with Gross Margin ≥ 45% by Year 3, EBITDA Margin ≥ 20% by Year 4, and Net Profit Margin ≥ 12% by 2030 through pricing effectiveness, cost control and high-value product mix.",
+    "key_initiatives": "17.1  Direct gross-margin optimisation per product line.\n17.2  Approve annual value-based pricing strategy review.\n17.3  Enforce SG&A discipline — bound sales cost as % of revenue.\n17.4  Prioritise high-margin products in incentive design.",
+    "perspective_weight": 30.0,
+    "objective_weight": 7.0,
+    "rows": [
+      {
+        "kpi": "Gross Profit Margin",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 45% by Year 3",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "EBITDA Margin",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 20% by Year 4",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Net Profit Margin",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 12% by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Cost-to-Income Ratio",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≤ 60%",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "SO18.  Increase Return on Investment",
+    "strategic_theme_alignment": "Operational Excellence",
+    "intended_result": "Establish disciplined capital governance with product-level P&L tracking, Board-level Capital Allocation Committee, and 5-year payback threshold for all capital projects — delivering Product ROI > 25% and ROCE ≥ 15% by Year 4.",
+    "key_initiatives": "18.1  Establish product-level P&L tracking from Year 2.\n18.2  Constitute Board Capital Allocation Committee.\n18.3  Approve annual business-case review for all capex.\n18.4  Enforce 5-year payback threshold for capital projects.",
+    "perspective_weight": 30.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Product Development ROI",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "> 25% by Year 4",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Return on Capital Employed (ROCE)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 15% by Year 4",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Capital Project Payback Period",
+        "unit": "Yrs",
+        "baseline": "TBD",
+        "target": "≤ 5 years",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "% Projects with Approved Business Case",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "SO19.  Increase Capital Investment",
+    "strategic_theme_alignment": "Business Growth & Partnership",
+    "intended_result": "Build a sustainable capital and innovation engine through DFI engagement (DBN, AfDB, IFC), retained-earnings reinvestment (40% of net profit), asset financing for print scaling, ring-fenced R&D at 8–10% of revenue, and strategic equity partnerships.",
+    "key_initiatives": "19.1  Launch DFI engagement programme (DBN, AfDB, IFC).\n19.2  Approve retained-earnings reinvestment policy (40% of NP).\n19.3  Secure asset-financing facility for print regional scaling.\n19.4  Ring-fence R&D budget at 8–10% of revenue annually.\n19.5  Evaluate strategic equity partnership opportunities.",
+    "perspective_weight": 30.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Annual Capital Investment (Growth)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "+20% p.a.",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Debt-to-Equity Ratio",
+        "unit": "Ratio",
+        "baseline": "TBD",
+        "target": "≤ 0.5",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "R&D Spend (% of Revenue)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "8–10%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "DFI Funding Secured",
+        "unit": "N$ M",
+        "baseline": "N$0",
+        "target": "≥ N$50 M by 2028",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Financial",
+    "strategic_objective": "SO15.  Reduce Costs",
+    "strategic_theme_alignment": "Operational Excellence",
+    "intended_result": "Deliver a cost-optimised and well-governed financial operating model that achieves cost-to-revenue ratio < 55% by 2029 and 5% year-on-year efficiency improvement from Year 2, enabled by zero-based budgeting, supplier consolidation, shared services and cloud cost optimisation.",
+    "key_initiatives": "15.1  Implement annual zero-based budgeting exercise.\n15.2  Approve supplier consolidation and renegotiation programme.\n15.3  Adopt shared-services model for back-office functions.\n15.4  Enforce procurement framework with formal controls.\n15.5  Run cloud cost optimisation programme.",
+    "perspective_weight": 30.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Cost-to-Revenue Ratio",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "< 55% by 2029",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "YoY Cost Efficiency Improvement",
+        "unit": "%",
+        "baseline": "0%",
+        "target": "≥ 5% from Year 2",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Procurement Framework Compliance",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Cloud Cost Optimisation Savings",
+        "unit": "%",
+        "baseline": "0%",
+        "target": "≥ 15%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "SO14.  Increase Customer Base",
+    "strategic_theme_alignment": "Business Growth & Partnership  |  Global Market Leadership",
+    "intended_result": "Establish a data-driven, multi-channel growth engine that delivers ≥ 30 new enterprise clients per year by Year 3, active paying clients in ≥ 10 countries by 2030, disciplined CAC management, and pipeline maintained at 3× revenue target.",
+    "key_initiatives": "14.1  Approve structured sales plan per market with monthly accountability.\n14.2  Enforce CRM-tracked pipeline with full sales-stage transparency.\n14.3  Launch e-commerce self-service trial and purchase capability.\n14.4  Implement channel partner-generated lead programme.\n14.5  Drive digital demand generation across SADC and target markets.",
+    "perspective_weight": 22.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "New Enterprise Clients Acquired",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 30 per year by Year 3",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Countries with Active Paying Clients",
+        "unit": "#",
+        "baseline": "1 (Namibia)",
+        "target": "≥ 10 by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Customer Acquisition Cost (CAC)",
+        "unit": "N$",
+        "baseline": "TBD",
+        "target": "≤ Sector benchmark",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Pipeline Value vs Revenue Target",
+        "unit": "Ratio",
+        "baseline": "TBD",
+        "target": "≥ 3.0×",
+        "measurement_frequency": "Monthly"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "SO10.  Improve Stakeholder Satisfaction",
+    "strategic_theme_alignment": "Business Growth & Partnership",
+    "intended_result": "Deliver a high-touch, stakeholder-centric engagement model achieving NPS ≥ 60 by Year 3 (≥ 70 by 2030), CSAT ≥ 4.2/5.0, SLA adherence ≥ 97%, and P1 incident resolution within 4 hours.",
+    "key_initiatives": "10.1  Assign Customer Success/Account Manager to every enterprise account.\n10.2  Approve structured stakeholder onboarding programmes.\n10.3  Institutionalise quarterly satisfaction reviews and surveys.\n10.4  Establish 24/7 multilingual support desk with published SLAs.\n10.5  Centralise SLA management through the CRM platform.",
+    "perspective_weight": 22.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Net Promoter Score (NPS)",
+        "unit": "Score",
+        "baseline": "TBD",
+        "target": "≥ 60 by Y3; ≥ 70 by 2030",
+        "measurement_frequency": "Bi-Annual"
+      },
+      {
+        "kpi": "Customer Satisfaction Score (CSAT)",
+        "unit": "/5",
+        "baseline": "TBD",
+        "target": "≥ 4.2 / 5.0",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SLA Adherence Rate",
+        "unit": "%",
+        "baseline": "90%",
+        "target": "≥ 97%",
+        "measurement_frequency": "Monthly"
+      },
+      {
+        "kpi": "P1 Incident Resolution Time",
+        "unit": "Hrs",
+        "baseline": "TBD",
+        "target": "≤ 4 hours",
+        "measurement_frequency": "Monthly"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "SO11.  Improve & Increase Strategic Partnerships",
+    "strategic_theme_alignment": "Global Market Leadership",
+    "intended_result": "Build a global partnership ecosystem of ≥ 50 active strategic partners by 2029, with partner revenue ≥ 25% of Green revenue by 2030 and partners active in ≥ 10 countries, anchored by AWS, CrowdStrike, AfDB, Accenture and OEM alliances.",
+    "key_initiatives": "11.1  Design and launch Green Channel Partner Programme (Gold/Silver/Bronze).\n11.2  Approve Government-to-Government introduction programme via MIR.\n11.3  Execute OEM agreements with Dell, HP, Cisco, AWS, Microsoft.\n11.4  Engage Pan-African institutions (AfDB, WB, IFC, UNDP).\n11.5  Prioritise Tier-1 partner activations (AWS, CrowdStrike, AfDB) by Q2 2026.",
+    "perspective_weight": 22.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Active Strategic Partners",
+        "unit": "#",
+        "baseline": "20",
+        "target": "≥ 50 by 2029",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Partner Revenue Share",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 25% by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Countries with Active Partner Agreements",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 10 by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Partner Satisfaction Score",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 85%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "SO12.  Increase Brand Recognition",
+    "strategic_theme_alignment": "Global Market Leadership",
+    "intended_result": "Establish a globally recognised brand presence in ≥ 10 countries by 2030, achieve 10 000 LinkedIn followers by Year 3, publish ≥ 12 case studies per year, and secure sustained international media and conference visibility.",
+    "key_initiatives": "12.1  Execute international brand and visual identity refresh.\n12.2  Launch multilingual website and global digital content strategy.\n12.3  Establish thought-leadership publication programme.\n12.4  Implement international conference and media strategy.\n12.5  Launch brand ambassador programme (MD & CTIO as voices).",
+    "perspective_weight": 22.0,
+    "objective_weight": 4.0,
+    "rows": [
+      {
+        "kpi": "Brand Awareness Score (Target Markets)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 70% by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "LinkedIn Followers & Engagement",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 10 000 by Year 3",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Case Studies Published Annually",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 12 per year",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "International Conference Appearances",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 6 per year",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Customer & Stakeholder",
+    "strategic_objective": "SO13.  Increase Stakeholder Retention",
+    "strategic_theme_alignment": "Business Growth & Partnership",
+    "intended_result": "Achieve client retention ≥ 90%, employee retention ≥ 85%, contract renewal ≥ 92%, and average client tenure ≥ 3 years through proactive retention and talent management.",
+    "key_initiatives": "13.1  Approve annual client health assessment (Green/Amber/Red).\n13.2  Launch multi-year contract loyalty incentive programme.\n13.3  Institutionalise 90-day renewal management process.\n13.4  Approve annual compensation benchmarking vs regional ICT market.\n13.5  Establish career development plan for every employee.",
+    "perspective_weight": 22.0,
+    "objective_weight": 3.0,
+    "rows": [
+      {
+        "kpi": "Client Retention Rate",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 90%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Employee Retention Rate",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 85%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Contract Renewal Rate",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 92%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Average Client Tenure",
+        "unit": "Yrs",
+        "baseline": "TBD",
+        "target": "≥ 3 years",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "SO6.  Improve Internal Processes & Operational Efficiency",
+    "strategic_theme_alignment": "Operational Excellence  |  Future-Ready Innovation",
+    "intended_result": "Deliver an integrated, automated operating model with 100% of core processes documented, optimised, enforced and digitised by 2027, on-time project delivery ≥ 85%, and full internal deployment of Green's ERP, CRM, Service Request and Attendance products.",
+    "key_initiatives": "6.1  Document, approve, enforce and digitise all core processes.\n6.2  Deploy Green's own ERP and PMS internally.\n6.3  Launch process automation programme across back-office.\n6.4  Implement ISO 9001 quality management system.\n6.5  Adopt stage-gate project delivery framework.",
+    "perspective_weight": 28.0,
+    "objective_weight": 8.0,
+    "rows": [
+      {
+        "kpi": "Core Processes Documented & Digitised",
+        "unit": "%",
+        "baseline": "70%",
+        "target": "100% by 2027",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "On-Time Project Delivery Rate",
+        "unit": "%",
+        "baseline": "30%",
+        "target": "≥ 85%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Internal Deployment of Green Products",
+        "unit": "%",
+        "baseline": "40% ERP / 60% CRM",
+        "target": "100% (ERP, CRM, SRT)",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Turnaround Time Reduction (Key Processes)",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 30% improvement",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "SO8.  Improve & Increase Compliance & Standards",
+    "strategic_theme_alignment": "Operational Excellence  |  Global Market Leadership",
+    "intended_result": "Establish a robust compliance framework with ISO 9001 in Year 2 (2027), ISO 27001, ISO 27017, ISO 27018, ISO 27701, ISO 22301, ISO 20000-1, PCI DSS, GDPR and Namibia DPA compliance secured by 2030, fewer than 3 open findings at any time, and zero critical compliance incidents.",
+    "key_initiatives": "8.1  Execute international certification calendar (ISO 27001 → 9001 → PCI DSS).\n8.2  Establish continuous monitoring and audit-driven improvement.\n8.3  Implement Business Continuity ISO 22301.\n8.4  Achieve GDPR and Namibia DPA compliance.\n8.5  Ring-fence critical compliance items for priority markets.",
+    "perspective_weight": 28.0,
+    "objective_weight": 8.0,
+    "rows": [
+      {
+        "kpi": "Active International Certifications",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 2 by 2027; Full suite by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Open Audit Findings (At Any Time)",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "< 3",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Critical Compliance Incidents",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "0",
+        "measurement_frequency": "Monthly"
+      },
+      {
+        "kpi": "Regulatory Compliance Rate",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Quarterly"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "SO7.  Improve Communication",
+    "strategic_theme_alignment": "Operational Excellence",
+    "intended_result": "Establish a connected and transparent engagement ecosystem with internal communication satisfaction ≥ 80%, 100% stakeholder plan adherence, CRM data quality index ≥ 90%, and unified digital presence across multilingual channels.",
+    "key_initiatives": "7.1  Launch internal knowledge-sharing platform.\n7.2  Develop and maintain Stakeholder Engagement Plan.\n7.3  Upgrade and fully adopt CRM platform.\n7.4  Execute multilingual website and content strategy.\n7.5  Establish quarterly all-staff meetings.",
+    "perspective_weight": 28.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Internal Communication Satisfaction Score",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 80%",
+        "measurement_frequency": "Bi-Annual"
+      },
+      {
+        "kpi": "CRM Data Quality Index",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 90%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Stakeholder Engagement Plan Adherence",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "All-Staff Strategic Sessions Held",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 4 per year",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Internal Processes",
+    "strategic_objective": "SO9.  Improve Policies (Internal & External)",
+    "strategic_theme_alignment": "Operational Excellence",
+    "intended_result": "Establish a robust internal and external policy framework with 100% of internal policies documented, current and approved by 2027, 100% published and accessible via the central repository, and annual review of applicable policies.",
+    "key_initiatives": "9.1  Establish standardised internal policy framework.\n9.2  Implement external policy framework (customer, supplier, partner).\n9.3  Publish all policies via central repository (SharePoint/EDRMS).\n9.4  Institutionalise annual review of applicable policies.\n9.5  Train all staff on mandatory policies.",
+    "perspective_weight": 28.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Policies Current, Approved & Accessible",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100% by 2027",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Staff Trained on Mandatory Policies",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 95%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Policy Audit Compliance Score",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Annual Policy Reviews Completed",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "SO4.  Increase & Improve Product Offering",
+    "strategic_theme_alignment": "Future-Ready Innovation",
+    "intended_result": "Commercialise 13 software products by 2029 (from a base of 4), achieve SaaS revenue ≥ 60% of Green revenue by 2030, migrate all products to multi-tenancy architecture, embed AI capabilities, and list on cloud marketplaces (AWS, Azure).",
+    "key_initiatives": "4.1  Establish dedicated Product Focus Team per software product.\n4.2  Confirm multi-tenancy architecture for all products.\n4.3  Integrate AI capability roadmap across product suite.\n4.4  Establish R&D function with dedicated budget.\n4.5  Complete Cloud marketplace listing (AWS, Azure).",
+    "perspective_weight": 20.0,
+    "objective_weight": 6.0,
+    "rows": [
+      {
+        "kpi": "Software Products Commercially Live",
+        "unit": "#",
+        "baseline": "4",
+        "target": "13 by 2029",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "SaaS Revenue Share",
+        "unit": "%",
+        "baseline": "5%",
+        "target": "≥ 60% by 2030",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Products on Multi-Tenancy Architecture",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "100%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Cloud Marketplace Listings (AWS/Azure)",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 4 by 2027",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "SO5.  Increase & Improve Strategic Infrastructure",
+    "strategic_theme_alignment": "Future-Ready Innovation",
+    "intended_result": "Deliver a secure, scalable digital foundation: Data Centre operational by 2029, SOC serving ≥ 20 MSEC clients by 2029, PKI service commercially launched, and e-commerce platform driving measurable international revenue by 2028.",
+    "key_initiatives": "5.1  Design, build and commission the Green Data Centre.\n5.2  Recruit, deploy and monetise SOC managed security services.\n5.3  Architect and commercially launch PKI service.\n5.4  Launch e-commerce self-service platform.",
+    "perspective_weight": 20.0,
+    "objective_weight": 5.0,
+    "rows": [
+      {
+        "kpi": "Data Centre Operational Status",
+        "unit": "Status",
+        "baseline": "Design",
+        "target": "Live by 2029",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "SOC Commercial Clients (MSEC)",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 20 by 2029",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "PKI Service Commercial Status",
+        "unit": "Status",
+        "baseline": "Concept",
+        "target": "Live & revenue-generating",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "E-commerce Platform Active Monthly Users",
+        "unit": "#",
+        "baseline": "0",
+        "target": "Live 2028; ≥ 5 000 by 2030",
+        "measurement_frequency": "Monthly"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "SO1.  Improve & Increase Skills",
+    "strategic_theme_alignment": "Future-Ready Innovation  |  Business Growth & Partnership",
+    "intended_result": "Develop talent to achieve high efficiency, competency and productivity: ≥ 160 hours training per employee annually, ≥ 90% of staff professionally certified by 2030, ≥ 5 Work-Integrated Learning intakes per year, and establishment of the Green Academy.",
+    "key_initiatives": "1.1  Launch Green Academy internal L&D programme.\n1.2  Approve professional certification sponsorship (CISSP, PMP, AWS, CPA, CISA, OEM).\n1.3  Institutionalise graduate recruitment and internship (WIL) programme.\n1.4  Launch diaspora talent attraction initiative.\n1.5  Deliver structured soft-skills training programme.",
+    "perspective_weight": 20.0,
+    "objective_weight": 3.0,
+    "rows": [
+      {
+        "kpi": "Training Hours per Employee (Annual)",
+        "unit": "Hrs",
+        "baseline": "TBD",
+        "target": "≥ 160 hrs",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Staff with Active Professional Certifications",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 90% by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "WIL Intakes per Year",
+        "unit": "#",
+        "baseline": "Induction",
+        "target": "≥ 5 per year",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Green Academy Operational Status",
+        "unit": "Status",
+        "baseline": "Concept",
+        "target": "Live by 2027",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "SO2.  Improve Capacity Building",
+    "strategic_theme_alignment": "Future-Ready Innovation",
+    "intended_result": "Achieve international recognition with well-structured leadership and governance: ≥ 2 active international certifications by 2027, 100% succession plan coverage for all senior roles, and formal external technology benchmarking programme.",
+    "key_initiatives": "2.1  Approve international certification calendar (ISO 27001 → PCI DSS → ISO 9001).\n2.2  Institutionalise succession planning for all senior roles.\n2.3  Establish cross-functional development rotations.\n2.4  Launch external technology benchmarking programme.\n2.5  Review corporate structure and governance.",
+    "perspective_weight": 20.0,
+    "objective_weight": 3.0,
+    "rows": [
+      {
+        "kpi": "Active International Certifications",
+        "unit": "#",
+        "baseline": "0",
+        "target": "≥ 2 by 2027",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Succession Plan Coverage (Senior Roles)",
+        "unit": "%",
+        "baseline": "50%",
+        "target": "100%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Cross-Functional Development Rotations",
+        "unit": "#",
+        "baseline": "TBD",
+        "target": "≥ 10 per year",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Governance Framework Compliance",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 95%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  },
+  {
+    "perspective": "Organisational Capacity",
+    "strategic_objective": "SO3.  Strengthen Leadership & Organisational Culture",
+    "strategic_theme_alignment": "Business Growth & Partnership",
+    "intended_result": "Foster a values-driven, diverse, high-performance culture: employee engagement ≥ 75%, voluntary turnover < 15%, ≥ 40% female leadership by 2030, and full alignment with Green values (Teamwork, Integrity, People, Autonomy, Innovation, Diversity).",
+    "key_initiatives": "3.1  Conduct annual culture and engagement survey with published action plans.\n3.2  Launch values-integration leadership programme.\n3.3  Approve diversity and inclusion framework with measurable targets.\n3.4  Establish employee wellbeing and recognition programme.\n3.5  Institutionalise MD & Chairperson-led culture stewardship.",
+    "perspective_weight": 20.0,
+    "objective_weight": 3.0,
+    "rows": [
+      {
+        "kpi": "Employee Engagement Index",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 75%",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Voluntary Staff Turnover Rate",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "< 15%",
+        "measurement_frequency": "Quarterly"
+      },
+      {
+        "kpi": "Female Representation in Leadership",
+        "unit": "%",
+        "baseline": "30%",
+        "target": "≥ 40% by 2030",
+        "measurement_frequency": "Annual"
+      },
+      {
+        "kpi": "Cultural Alignment Score",
+        "unit": "%",
+        "baseline": "TBD",
+        "target": "≥ 85%",
+        "measurement_frequency": "Annual"
+      }
+    ]
+  }
+]

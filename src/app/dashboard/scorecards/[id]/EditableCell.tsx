@@ -6,6 +6,14 @@ const STATUS_COLORS: Record<string, string> = {
   on_track: "bg-green-100 text-green-700",
   at_risk: "bg-amber-100 text-amber-700",
   off_track: "bg-red-100 text-red-700",
+  not_yet_measured: "bg-gray-100 text-gray-500",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  on_track: "On Track",
+  at_risk: "At Risk",
+  off_track: "Off Track",
+  not_yet_measured: "Not Yet Measured",
 };
 
 export function EditableTextCell({
@@ -76,8 +84,8 @@ export function EditableSelectCell({
 
 export function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? "bg-gray-100 text-gray-600"}`}>
-      {status.replace("_", " ")}
+    <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? "bg-gray-100 text-gray-600"}`}>
+      {STATUS_LABELS[status] ?? status.replace(/_/g, " ")}
     </span>
   );
 }

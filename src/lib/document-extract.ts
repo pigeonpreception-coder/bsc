@@ -1,6 +1,11 @@
 import "server-only";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_EXTRACTED_CHARS = 8000;
+
+// An unbounded loop over supporting documents could balloon the prompt
+// size and request latency if a client uploads a large batch of files.
+const MAX_SUPPORTING_DOCUMENTS = 5;
 
 async function extractPdf(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse");
@@ -79,4 +84,48 @@ export async function fetchWebsiteText(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+type PlanDocumentFields = {
+  company_profile_url: string | null;
+  strategic_plan_document_url: string | null;
+  supporting_documents: { url: string; fileName: string }[] | null;
+  website_url: string | null;
+};
+
+/**
+ * Combined excerpt text from every document/website a client has provided
+ * for this plan (company profile, existing Strategic Plan draft, any other
+ * supporting documents, and the company website) — the shared context
+ * block used by every AI generation step that reads a company's intake.
+ */
+export async function buildUploadedDocumentContext(plan: PlanDocumentFields): Promise<string> {
+  const admin = createAdminClient();
+
+  async function extractUploaded(path: string): Promise<string | null> {
+    const { data: file } = await admin.storage.from("company-documents").download(path);
+    if (!file) return null;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    return extractDocumentText(buffer, path);
+  }
+
+  let context = "";
+  if (plan.company_profile_url) {
+    const text = await extractUploaded(plan.company_profile_url);
+    if (text) context += `\n\nExcerpt from uploaded company profile document:\n${text}`;
+  }
+  if (plan.strategic_plan_document_url) {
+    const text = await extractUploaded(plan.strategic_plan_document_url);
+    if (text) context += `\n\nExcerpt from uploaded existing draft Strategic Plan:\n${text}`;
+  }
+  for (const doc of (plan.supporting_documents ?? []).slice(0, MAX_SUPPORTING_DOCUMENTS)) {
+    if (!doc.url) continue;
+    const text = await extractUploaded(doc.url);
+    if (text) context += `\n\nExcerpt from uploaded supporting document "${doc.fileName}":\n${text}`;
+  }
+  if (plan.website_url) {
+    const text = await fetchWebsiteText(plan.website_url);
+    if (text) context += `\n\nExcerpt from company website (${plan.website_url}):\n${text}`;
+  }
+  return context;
 }

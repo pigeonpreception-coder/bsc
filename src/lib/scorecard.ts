@@ -1,15 +1,20 @@
 export type RowStatus = "not_yet_measured" | "on_track" | "at_risk" | "off_track";
 
+/** The four Balanced Scorecard perspectives, GES canonical naming. */
+export const CANONICAL_PERSPECTIVES = [
+  "Financial",
+  "Customer & Stakeholder",
+  "Internal Processes",
+  "Organisational Capacity",
+] as const;
+
 /**
  * Platform-standard perspectives. Both the classic four and the GES
  * expanded labels are accepted (see migration 0008); this list defines
  * the canonical display order — anything not listed sorts to the end.
  */
 export const PERSPECTIVES = [
-  "Financial",
-  "Customer & Stakeholder",
-  "Internal Processes",
-  "Organisational Capacity",
+  ...CANONICAL_PERSPECTIVES,
   // Classic aliases still valid for older/other tenants:
   "Customer",
   "Internal Process",

@@ -4,7 +4,25 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateStrategicPlan, approveStrategicPlan } from "./actions";
 import { generateBalancedScorecards } from "./bsc-actions";
+import { generatePlanDocumentIntro, generatePlanSection5, generatePlanDocumentClosing } from "./document-actions";
+import { downloadStrategicPlan } from "./export-actions";
+import { CANONICAL_PERSPECTIVES } from "@/lib/scorecard";
+import { getCorporateBscView } from "@/lib/corporate-bsc-view";
 import ActionButton from "./ActionButton";
+import DownloadPlanButton from "./DownloadPlanButton";
+
+type PlanSectionRow = {
+  id: string;
+  section_number: string;
+  section_title: string;
+  depth: number;
+  content: string | null;
+  is_placeholder: boolean;
+  is_dynamic: boolean;
+};
+
+type StrategicObjectiveRow = { id: string; objective_text: string; perspective: string };
+type StrategicThemeRow = { id: string; theme_number: number; title: string; intended_result: string | null };
 
 type GeneratedPlan = {
   executive_summary: string;
@@ -39,10 +57,67 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     "use server";
     await generateBalancedScorecards(id);
   }
+  async function handleGenerateDocumentIntro() {
+    "use server";
+    await generatePlanDocumentIntro(id);
+  }
+  async function handleGenerateSection5() {
+    "use server";
+    await generatePlanSection5(id);
+  }
+  async function handleGenerateDocumentClosing() {
+    "use server";
+    await generatePlanDocumentClosing(id);
+  }
+  async function handleDownloadPlan() {
+    "use server";
+    return await downloadStrategicPlan(id);
+  }
+
+  const { data: planSections } = await supabase
+    .from("plan_sections")
+    .select("id, section_number, section_title, depth, content, is_placeholder, is_dynamic")
+    .eq("plan_id", id)
+    .order("sort_order", { ascending: true });
+
+  const { data: strategicThemes } = await supabase
+    .from("strategic_themes")
+    .select("id, theme_number, title, intended_result")
+    .eq("plan_id", id)
+    .order("sort_order", { ascending: true });
+
+  const { data: corporateObjectives } = await supabase
+    .from("strategic_objectives")
+    .select("id, objective_text, perspective")
+    .eq("plan_id", id);
+
+  const { data: themeAlignments } = await supabase
+    .from("strategic_objective_themes")
+    .select("theme_id, objective_id")
+    .eq("plan_id", id);
+
+  const objectiveById = new Map((corporateObjectives ?? []).map((o) => [o.id, o as StrategicObjectiveRow]));
+  const objectivesByTheme = new Map<string, StrategicObjectiveRow[]>();
+  for (const link of themeAlignments ?? []) {
+    const objective = objectiveById.get(link.objective_id);
+    if (!objective) continue;
+    const list = objectivesByTheme.get(link.theme_id) ?? [];
+    list.push(objective);
+    objectivesByTheme.set(link.theme_id, list);
+  }
+
+  const objectivesByPerspective = new Map<string, StrategicObjectiveRow[]>();
+  for (const objective of (corporateObjectives ?? []) as StrategicObjectiveRow[]) {
+    const list = objectivesByPerspective.get(objective.perspective) ?? [];
+    list.push(objective);
+    objectivesByPerspective.set(objective.perspective, list);
+  }
 
   const { count: scorecardCount } = plan.status === "active"
     ? await supabase.from("scorecards").select("id", { count: "exact", head: true }).eq("plan_id", id)
     : { count: 0 };
+
+  const corporateBsc = await getCorporateBscView(id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -80,6 +155,173 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </div>
         </dl>
       </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-navy">Strategic Plan Document (preview)</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Early preview of the full board-level document generator. Sections 1–9 are wired up — the live
+              Balanced Scorecard section (5.4) and export come next.
+            </p>
+          </div>
+          {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <ActionButton action={handleGenerateDocumentIntro} pendingLabel="Generating… this can take a minute or two" variant="secondary">
+                {planSections?.some((s) => s.section_number === "1") ? "Regenerate Sections 1–4" : "Generate Sections 1–4"}
+              </ActionButton>
+              <ActionButton action={handleGenerateSection5} pendingLabel="Generating… this runs 4 AI steps and can take a few minutes" variant="secondary">
+                {strategicThemes && strategicThemes.length > 0 ? "Regenerate Section 5" : "Generate Section 5 (Strategic Themes)"}
+              </ActionButton>
+              <ActionButton action={handleGenerateDocumentClosing} pendingLabel="Generating… this can take a minute or two" variant="secondary">
+                {planSections?.some((s) => s.section_number === "6") ? "Regenerate Sections 6–9" : "Generate Sections 6–9"}
+              </ActionButton>
+            </div>
+          )}
+        </div>
+
+        {corporateObjectives && corporateObjectives.length > 0 && (
+          <div className="mt-6 rounded-md border border-gray-200 bg-gray-50 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-navy">
+              Corporate Strategic Objectives ({corporateObjectives.length})
+            </h3>
+            <div className="mt-3 space-y-3">
+              {CANONICAL_PERSPECTIVES.map((perspective) => {
+                const items = objectivesByPerspective.get(perspective) ?? [];
+                if (items.length === 0) return null;
+                return (
+                  <div key={perspective}>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-gold-light bg-navy inline-block rounded px-2 py-0.5">
+                      {perspective} ({items.length})
+                    </h4>
+                    <ul className="mt-1 list-inside list-disc space-y-0.5 text-sm text-gray-700">
+                      {items.map((objective) => (
+                        <li key={objective.id}>{objective.objective_text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {strategicThemes && strategicThemes.length > 0 && (
+          <div className="mt-6 rounded-md border border-gold-light/60 bg-gold-light/10 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-navy">
+              Strategic Themes ({strategicThemes.length})
+            </h3>
+            <div className="mt-3 space-y-4">
+              {(strategicThemes as StrategicThemeRow[]).map((theme) => (
+                <div key={theme.id}>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Theme {theme.theme_number}: {theme.title}
+                  </p>
+                  {theme.intended_result && (
+                    <p className="mt-0.5 text-xs text-gray-500">Intended Result: {theme.intended_result}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400">
+                    {(objectivesByTheme.get(theme.id) ?? []).length} aligned objective(s):
+                  </p>
+                  <ul className="mt-1 list-inside list-disc space-y-0.5 text-sm text-gray-700">
+                    {(objectivesByTheme.get(theme.id) ?? []).map((objective) => (
+                      <li key={objective.id}>
+                        {objective.objective_text} <span className="text-gray-400">({objective.perspective})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {planSections && planSections.length > 0 && (
+          <div className="mt-6 space-y-5">
+            {planSections.map((section: PlanSectionRow) => (
+              <div key={section.id} style={{ marginLeft: `${(section.depth - 1) * 1.25}rem` }}>
+                <h3 className={section.depth === 1 ? "text-sm font-bold text-navy" : "text-sm font-semibold text-gray-700"}>
+                  {section.section_number}. {section.section_title}
+                </h3>
+                {section.is_placeholder && (
+                  <p className="mt-1 text-xs italic text-amber-600">
+                    Pending framework specification — awaiting content.
+                  </p>
+                )}
+                {section.is_dynamic && section.section_number !== "5.4" && (
+                  <p className="mt-1 text-xs italic text-gray-400">
+                    Rendered live from other data — not applicable to this preview.
+                  </p>
+                )}
+                {section.content && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{section.content}</p>}
+                {section.section_number === "5.4" && (
+                  <div className="mt-2">
+                    {!corporateBsc ? (
+                      <p className="text-xs italic text-gray-400">
+                        No Corporate Balanced Scorecard has been generated yet for this plan — this section will
+                        render it automatically once one exists.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="text-xs text-gray-500">Live from “{corporateBsc.scorecardName}”</p>
+                        {corporateBsc.perspectiveGroups.map((group) => (
+                          <div key={group.perspective} className="overflow-x-auto">
+                            <h4 className="text-xs font-semibold uppercase tracking-wide text-gold-light bg-navy inline-block rounded px-2 py-0.5">
+                              {group.perspective}
+                            </h4>
+                            <table className="mt-2 w-full min-w-[720px] text-xs">
+                              <thead className="text-left uppercase text-gray-500">
+                                <tr>
+                                  <th className="py-1 pr-3">Strategic Objective</th>
+                                  <th className="py-1 pr-3">Intended Result</th>
+                                  <th className="py-1 pr-3">Key Initiatives</th>
+                                  <th className="py-1 pr-3">KPI / Measure</th>
+                                  <th className="py-1 pr-3">Baseline</th>
+                                  <th className="py-1 pr-3">Target</th>
+                                  <th className="py-1">Owner</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {group.rows.map((row) => (
+                                  <tr key={row.id}>
+                                    <td className="py-2 pr-3 text-gray-700">{row.strategicObjective}</td>
+                                    <td className="py-2 pr-3 text-gray-500">{row.intendedResult ?? "—"}</td>
+                                    <td className="py-2 pr-3 text-gray-500">{row.keyInitiatives ?? "—"}</td>
+                                    <td className="py-2 pr-3 text-gray-700">
+                                      {row.kpi}
+                                      {row.unit ? ` (${row.unit})` : ""}
+                                    </td>
+                                    <td className="py-2 pr-3 text-gray-500">{row.baseline ?? "—"}</td>
+                                    <td className="py-2 pr-3 text-gray-500">{row.target ?? "—"}</td>
+                                    <td className="py-2 text-gray-500">{row.ownerName ?? "Unassigned"}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {planSections && planSections.length > 0 && canManage && (
+        <div className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="text-sm font-semibold text-navy">Export</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            Generates both a PDF and a Word (.docx) version of the document above, including a cover page, table of
+            contents, and the live Balanced Scorecard table.
+          </p>
+          <div className="mt-4">
+            <DownloadPlanButton action={handleDownloadPlan} />
+          </div>
+        </div>
+      )}
 
       {!generated && canManage && (
         <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">

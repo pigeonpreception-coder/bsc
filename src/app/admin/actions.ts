@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -41,7 +40,7 @@ export async function createTenant(formData: FormData) {
   if (error) throw error;
 
   revalidatePath("/admin");
-  redirect(`/admin/tenants/${tenant.id}`);
+  return tenant.id as string;
 }
 
 export async function setLicenseStatus(tenantId: string, status: "active" | "suspended") {

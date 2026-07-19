@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/performance-recalc",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/daily-tasks",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-advisory",
+      "schedule": "0 5 * * 1"
+    }
+  ]
+}

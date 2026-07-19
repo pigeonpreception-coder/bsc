@@ -35,3 +35,6 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, results });
 }
+
+// Vercel Cron always invokes via GET.
+export { POST as GET };

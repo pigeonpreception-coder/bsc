@@ -319,7 +319,7 @@ export default async function DashboardHomePage() {
       </div>
 
       {/* Weekly Advisory */}
-      {advisory && (isMonday || advisory) && (
+      {isMonday && advisory && (
         <div className="rounded-lg border-2 border-gold bg-gold/5 p-4">
           <h2 className="mb-2 text-sm font-semibold text-navy">📋 Weekly Performance Advisory</h2>
           <p className="text-sm text-gray-700">{advisory.advisory_text}</p>

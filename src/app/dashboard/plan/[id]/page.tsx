@@ -3,12 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateStrategicPlan, approveStrategicPlan } from "./actions";
-import { generateBalancedScorecards } from "./bsc-actions";
 import { generatePlanDocumentIntro, generatePlanSection5, generatePlanDocumentClosing } from "./document-actions";
 import { downloadStrategicPlan } from "./export-actions";
 import { CANONICAL_PERSPECTIVES } from "@/lib/scorecard";
 import { getCorporateBscView } from "@/lib/corporate-bsc-view";
-import ActionButton from "./ActionButton";
+import ActionButton from "@/components/ActionButton";
 import DownloadPlanButton from "./DownloadPlanButton";
 
 type PlanSectionRow = {
@@ -52,10 +51,6 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   async function handleApprove() {
     "use server";
     await approveStrategicPlan(id);
-  }
-  async function handleGenerateScorecards() {
-    "use server";
-    await generateBalancedScorecards(id);
   }
   async function handleGenerateDocumentIntro() {
     "use server";
@@ -436,13 +431,15 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           {plan.status === "active" && !scorecardCount && canManage && (
             <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
               <p className="text-sm text-gray-500">
-                Plan approved. Generate the cascading Corporate, Departmental, and Individual Balanced Scorecards.
+                Plan approved. Set up your organisational hierarchy to generate the cascading Corporate,
+                Executive, Departmental, and Individual Balanced Scorecards.
               </p>
-              <div className="mt-4">
-                <ActionButton action={handleGenerateScorecards} pendingLabel="Generating scorecards… this can take a few minutes">
-                  Generate Balanced Scorecards
-                </ActionButton>
-              </div>
+              <Link
+                href="/dashboard/onboarding"
+                className="mt-4 inline-block rounded-md bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-navy-light"
+              >
+                Set Up Organisation
+              </Link>
             </div>
           )}
 
@@ -455,13 +452,6 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               >
                 View Scorecards
               </Link>
-              {canManage && (
-                <div className="mt-3">
-                  <ActionButton action={handleGenerateScorecards} pendingLabel="Regenerating…" variant="secondary">
-                    Regenerate Scorecards
-                  </ActionButton>
-                </div>
-              )}
             </div>
           )}
         </>

@@ -6,7 +6,15 @@ import { addTeamMember } from "./actions";
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold";
 
-export default function AddTeamMemberForm({ departments }: { departments: string[] }) {
+export type UnfilledPosition = { id: string; label: string };
+
+export default function AddTeamMemberForm({
+  departments,
+  positions,
+}: {
+  departments: string[];
+  positions: UnfilledPosition[];
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +81,23 @@ export default function AddTeamMemberForm({ departments }: { departments: string
             <input id="department" name="department" type="text" required className={inputClass} />
           )}
         </div>
+      </div>
+      <div>
+        <label htmlFor="position_id" className="block text-sm font-medium text-gray-700">
+          Organisational position <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+        <select id="position_id" name="position_id" defaultValue="" className={inputClass}>
+          <option value="">Not linked yet</option>
+          {positions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-gray-400">
+          Linking a position powers this person&apos;s dashboard, daily tasks, and alerts. You can also set this
+          later.
+        </p>
       </div>
       <button
         type="submit"

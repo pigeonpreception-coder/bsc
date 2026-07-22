@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateDailyTasks } from "@/lib/tasks";
 
 // POST /api/cron/daily-tasks
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get all tenants with onboarding completed
   const { data: tenants } = await supabase
@@ -24,36 +24,21 @@ export async function POST(request: NextRequest) {
 
   for (const tenant of tenants ?? []) {
     try {
-      // Get all non-board positions with their linked users
+      // Get all non-board positions that are explicitly linked to a user
       const { data: positions } = await supabase
         .from("org_positions")
-        .select("id, first_name, surname")
+        .select("id, user_id")
         .eq("tenant_id", tenant.id)
-        .neq("position_type", "board");
+        .neq("position_type", "board")
+        .not("user_id", "is", null);
 
       if (!positions) continue;
-
-      // For each position, find the matching user
-      const { data: users } = await supabase
-        .from("users")
-        .select("id, full_name, email")
-        .eq("tenant_id", tenant.id)
-        .in("role", ["company_admin", "manager", "staff"]);
 
       let usersProcessed = 0;
       let totalTasks = 0;
 
       for (const pos of positions) {
-        // Try to match position to user by name
-        const posName = [pos.first_name, pos.surname].filter(Boolean).join(" ").toLowerCase();
-        const matchedUser = (users ?? []).find((u) => {
-          const uName = (u.full_name ?? u.email).toLowerCase();
-          return uName.includes(posName) || posName.includes(uName);
-        });
-
-        if (!matchedUser) continue;
-
-        const tasksGenerated = await generateDailyTasks(supabase, matchedUser.id, tenant.id, pos.id);
+        const tasksGenerated = await generateDailyTasks(supabase, pos.user_id as string, tenant.id, pos.id);
         totalTasks += tasksGenerated;
         usersProcessed++;
       }

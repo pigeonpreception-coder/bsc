@@ -90,28 +90,16 @@ export default async function DashboardHomePage() {
   }
 
   // ─── Find user's position ───────────────────────────────
-  // Try to find position via position_scorecards → match scorecard owner
-  const { data: userPositionLink } = await supabase
-    .from("position_scorecards")
-    .select("position_id, scorecard_id, scorecard_scope")
-    .eq("tenant_id", user.tenant_id!)
-    .limit(100);
-
-  // Match by finding a position whose name matches or a scorecard owned by this user
-  const { data: userOwnedScorecard } = await supabase
-    .from("scorecards")
+  // Explicit link set on the Team page (org_positions.user_id), replacing
+  // the old name-matching / scorecard-ownership guesswork.
+  const { data: myLinkedPosition } = await supabase
+    .from("org_positions")
     .select("id")
-    .eq("owner_user_id", user.id)
-    .eq("scorecard_type", "individual")
+    .eq("tenant_id", user.tenant_id!)
+    .eq("user_id", user.id)
     .maybeSingle();
 
-  let userPositionId: string | null = null;
-  if (userOwnedScorecard && userPositionLink) {
-    const link = userPositionLink.find((l) => l.scorecard_id === userOwnedScorecard.id);
-    if (link) {
-      userPositionId = link.position_id;
-    }
-  }
+  const userPositionId: string | null = myLinkedPosition?.id ?? null;
 
   // ─── Load performance data ─────────────────────────────
   // Load user's performance score
@@ -143,17 +131,21 @@ export default async function DashboardHomePage() {
       .select("id, office_department_name, section_name, position_type")
       .eq("reports_to_id", userPositionId);
 
-    if (childPositions) {
-      for (const child of childPositions) {
-        const { data: childScore } = await supabase
-          .from("performance_scores")
-          .select("composite_performance_score")
-          .eq("position_id", child.id)
-          .maybeSingle();
+    if (childPositions && childPositions.length > 0) {
+      const { data: childScores } = await supabase
+        .from("performance_scores")
+        .select("position_id, composite_performance_score")
+        .in(
+          "position_id",
+          childPositions.map((c) => c.id),
+        );
 
+      const scoreByPosition = new Map((childScores ?? []).map((s) => [s.position_id, s.composite_performance_score]));
+
+      for (const child of childPositions) {
         levelsBelow.push({
           name: child.section_name || child.office_department_name,
-          score: childScore?.composite_performance_score ?? 0,
+          score: scoreByPosition.get(child.id) ?? 0,
           positionType: child.position_type,
         });
       }
@@ -170,24 +162,36 @@ export default async function DashboardHomePage() {
     .order("task_priority", { ascending: true });
 
   // ─── Alerts ────────────────────────────────────────────
-  const { data: alerts } = await supabase
-    .from("performance_alerts")
-    .select("*")
-    .eq("tenant_id", user.tenant_id!)
-    .eq("is_read", false)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  // Scoped to the caller's own position at the query level (not filtered
+  // after the fact) so a busy tenant's other-department alerts can't push
+  // a non-admin's own unread alerts out of the top-10 window.
+  const { data: alerts } =
+    user.role === "company_admin"
+      ? await supabase
+          .from("performance_alerts")
+          .select("*")
+          .eq("tenant_id", user.tenant_id!)
+          .eq("is_read", false)
+          .order("created_at", { ascending: false })
+          .limit(10)
+      : userPositionId
+        ? await supabase
+            .from("performance_alerts")
+            .select("*")
+            .eq("tenant_id", user.tenant_id!)
+            .eq("position_id", userPositionId)
+            .eq("is_read", false)
+            .order("created_at", { ascending: false })
+            .limit(10)
+        : { data: [] };
 
-  // Filter alerts: show only relevant ones
-  // For non-admin users, show only their position's alerts
-  const filteredAlerts = (alerts ?? []).filter((a) => {
-    if (user.role === "company_admin") return true;
-    return a.position_id === userPositionId;
-  });
+  const filteredAlerts = alerts ?? [];
 
   // ─── Weekly advisory ───────────────────────────────────
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+  const now = new Date();
+  const daysSinceMonday = (now.getDay() + 6) % 7; // Sunday (0) -> 6, Monday (1) -> 0, ...
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - daysSinceMonday);
   const weekStartStr = weekStart.toISOString().split("T")[0];
   const isMonday = new Date().getDay() === 1;
 
@@ -300,6 +304,22 @@ export default async function DashboardHomePage() {
     );
   }
 
+  // ─── Not yet linked to a position ──────────────────────
+  // A non-admin whose org position hasn't been assigned yet (via the Team
+  // page) has no data to show — say so, rather than falling through to a
+  // dashboard full of zeroed/empty widgets that looks broken.
+  if (!userPositionId) {
+    return (
+      <div>
+        <h1 className="text-xl font-semibold text-navy">Welcome{user.full_name ? `, ${user.full_name}` : ""}</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          You haven&apos;t been linked to a position in the organisation yet, so there&apos;s nothing to show here.
+          Ask your Company Admin to link your account to your role on the Team page.
+        </p>
+      </div>
+    );
+  }
+
   // ─── Full Role-Aware Dashboard ─────────────────────────
 
   const positionLabel = myPosition
@@ -330,14 +350,14 @@ export default async function DashboardHomePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white p-6">
           <PerformanceGauge
-            score={myScore?.own_performance_score ?? 0}
+            score={myScore?.own_performance_score ?? null}
             label="My Performance"
           />
         </div>
         {levelsBelow.length > 0 && (
           <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white p-6">
             <PerformanceGauge
-              score={myScore?.composite_performance_score ?? 0}
+              score={myScore?.composite_performance_score ?? null}
               label="Team Composite"
             />
           </div>

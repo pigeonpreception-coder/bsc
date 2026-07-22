@@ -1,8 +1,25 @@
 "use client";
 
-export function PerformanceGauge({ score, label }: { score: number; label: string }) {
-  const clampedScore = Math.min(Math.max(score, 0), 100);
+export function PerformanceGauge({ score, label }: { score: number | null; label: string }) {
   const circumference = 2 * Math.PI * 45;
+
+  if (score === null) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative h-28 w-28">
+          <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-lg font-semibold text-gray-400">—</span>
+          </div>
+        </div>
+        <p className="mt-1 text-xs font-medium text-gray-500">{label}</p>
+      </div>
+    );
+  }
+
+  const clampedScore = Math.min(Math.max(score, 0), 100);
   const dashOffset = circumference - (clampedScore / 100) * circumference;
   const color = clampedScore >= 90 ? "#1e8e3e" : clampedScore >= 70 ? "#e8a723" : "#d93025";
 

@@ -21,12 +21,15 @@ const ADMIN_EDITABLE_FIELDS = [
   "measurement_frequency",
   "actual",
   "responsible_person",
+  "lower_is_better",
   "status",
 ] as const;
 
 export type EditableField = (typeof ADMIN_EDITABLE_FIELDS)[number];
 
 const NUMERIC_FIELDS: EditableField[] = ["perspective_weight", "objective_weight"];
+const BOOLEAN_FIELDS: EditableField[] = ["lower_is_better"];
+const STATUS_AFFECTING_FIELDS: EditableField[] = ["actual", "target", "lower_is_better"];
 
 async function loadContext(rowId: string) {
   const user = await getCurrentUser();
@@ -50,11 +53,21 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
   if (!canEdit) throw new Error("Not authorized to edit this field");
 
   const update: Record<string, unknown> = {
-    [field]: NUMERIC_FIELDS.includes(field) ? (value === "" ? null : Number(value)) : value,
+    [field]:
+      value === ""
+        ? null
+        : NUMERIC_FIELDS.includes(field)
+          ? Number(value)
+          : BOOLEAN_FIELDS.includes(field)
+            ? value === "true"
+            : value,
   };
 
-  if (field === "actual") {
-    update.status = computeAutoStatus(value, row.target, row.lower_is_better ?? false);
+  if (STATUS_AFFECTING_FIELDS.includes(field)) {
+    const nextActual = field === "actual" ? value : row.actual;
+    const nextTarget = field === "target" ? value : row.target;
+    const nextLowerIsBetter = field === "lower_is_better" ? value === "true" : (row.lower_is_better ?? false);
+    update.status = computeAutoStatus(nextActual, nextTarget, nextLowerIsBetter);
   }
 
   const { error } = await supabase.from("scorecard_rows").update(update).eq("id", rowId);
@@ -92,12 +105,25 @@ export async function addScorecardRow(scorecardId: string) {
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("scorecard_rows")
-    .select("sort_order")
+    .select("sort_order, strategic_objective, kpi")
     .eq("scorecard_id", scorecardId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
+    .order("sort_order", { ascending: false });
 
-  const nextSortOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+  const rows = existing ?? [];
+
+  const isPlaceholderObjective = (text: string | null) => /^New objective( \d+)?$/.test(text ?? "");
+  const unfinished = rows.find((r) => isPlaceholderObjective(r.strategic_objective) || r.kpi === "New KPI");
+  if (unfinished) {
+    throw new Error("Fill out the Strategic Objective and KPI on the row you already added before adding another.");
+  }
+
+  const nextSortOrder = (rows[0]?.sort_order ?? -1) + 1;
+
+  // Give each placeholder objective a distinct label so a freshly-added row
+  // is never mistaken for a "continuation" of the previous freshly-added
+  // row (the grouping logic keys off perspective+objective text matching).
+  const placeholderCount = rows.filter((r) => isPlaceholderObjective(r.strategic_objective)).length;
+  const objectiveText = placeholderCount === 0 ? "New objective" : `New objective ${placeholderCount + 1}`;
 
   const { data: newRow, error } = await supabase
     .from("scorecard_rows")
@@ -105,7 +131,7 @@ export async function addScorecardRow(scorecardId: string) {
       scorecard_id: scorecardId,
       tenant_id: user.tenant_id,
       perspective: "Financial",
-      strategic_objective: "New objective",
+      strategic_objective: objectiveText,
       kpi: "New KPI",
       status: "not_yet_measured",
       sort_order: nextSortOrder,

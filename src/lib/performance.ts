@@ -33,6 +33,7 @@ type ScorecardRow = {
   actual: string | null;
   target: string | null;
   objective_weight: number | null;
+  perspective_weight: number | null;
   lower_is_better: boolean | null;
   status: string;
 };
@@ -65,10 +66,15 @@ function weightedAverage(scores: { score: number; weight: number }[]): number {
 }
 
 function computeScorecardScore(rows: ScorecardRow[]) {
-  const kpiScores: { score: number; weight: number }[] = [];
   let onTrack = 0, atRisk = 0, offTrack = 0;
 
   const bucketScores: Record<string, { score: number; weight: number }[]> = {
+    financial: [],
+    customer: [],
+    internal_process: [],
+    learning_growth: [],
+  };
+  const bucketPerspectiveWeights: Record<string, number[]> = {
     financial: [],
     customer: [],
     internal_process: [],
@@ -80,9 +86,13 @@ function computeScorecardScore(rows: ScorecardRow[]) {
     const score = computeKpiScore(row.actual, row.target, lowerIsBetter);
     if (score === null) continue;
     const w = row.objective_weight ?? 1;
-    kpiScores.push({ score, weight: w });
     const bucket = perspectiveBucket(row.perspective);
-    if (bucket) bucketScores[bucket].push({ score, weight: w });
+    if (bucket) {
+      bucketScores[bucket].push({ score, weight: w });
+      if (row.perspective_weight !== null && row.perspective_weight !== undefined) {
+        bucketPerspectiveWeights[bucket].push(row.perspective_weight);
+      }
+    }
 
     const status = computeAutoStatus(row.actual, row.target, lowerIsBetter);
     if (status === "on_track") onTrack++;
@@ -90,8 +100,23 @@ function computeScorecardScore(rows: ScorecardRow[]) {
     else if (status === "off_track") offTrack++;
   }
 
+  // Composite "own" score is a two-level weighted average: each perspective's
+  // score (already objective_weight-weighted within the perspective) is then
+  // weighted by that perspective's own perspective_weight. Falls back to an
+  // equal 25% split for any perspective where nobody set a weight.
+  const bucketKeys = ["financial", "customer", "internal_process", "learning_growth"] as const;
+  const perspectiveWeightedScores = bucketKeys
+    .map((bucket) => {
+      const scores = bucketScores[bucket];
+      if (scores.length === 0) return null;
+      const weights = bucketPerspectiveWeights[bucket];
+      const weight = weights.length > 0 ? weights.reduce((a, b) => a + b, 0) / weights.length : 25;
+      return { score: weightedAverage(scores), weight };
+    })
+    .filter((b): b is { score: number; weight: number } => b !== null);
+
   return {
-    ownScore: kpiScores.length > 0 ? weightedAverage(kpiScores) : 0,
+    ownScore: perspectiveWeightedScores.length > 0 ? weightedAverage(perspectiveWeightedScores) : 0,
     financialScore: weightedAverage(bucketScores.financial),
     customerScore: weightedAverage(bucketScores.customer),
     internalProcessScore: weightedAverage(bucketScores.internal_process),
@@ -156,7 +181,7 @@ export async function calculatePerformanceScores(
   // Load all scorecard rows for this tenant at once
   const { data: allRows } = await supabase
     .from("scorecard_rows")
-    .select("id, scorecard_id, perspective, actual, target, objective_weight, lower_is_better, status")
+    .select("id, scorecard_id, perspective, actual, target, objective_weight, perspective_weight, lower_is_better, status")
     .eq("tenant_id", tenantId);
 
   const rowsByScorecardId = new Map<string, ScorecardRow[]>();

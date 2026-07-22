@@ -3,23 +3,45 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { FIXED_COLUMN_ORDER } from "@/lib/scorecard";
 
-export async function addScorecardColumn(scorecardId: string) {
+const FIXED_ORDERS = Object.values(FIXED_COLUMN_ORDER).sort((a, b) => a - b);
+
+// insertBeforeOrder: the order value (a fixed column's constant, or an
+// existing custom column's column_order) the new column should land just
+// before. The new column's own order is the midpoint between that and
+// whatever sits immediately before it in the combined fixed+custom
+// sequence — so nothing else ever needs to shift. Omit to append at the end.
+export async function addScorecardColumn(scorecardId: string, insertBeforeOrder?: number) {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id)
     throw new Error("Not authorized");
 
   const supabase = await createClient();
 
-  // Get next column_order
   const { data: existing } = await supabase
     .from("scorecard_columns")
-    .select("column_order")
+    .select("id, column_order, column_label")
     .eq("scorecard_id", scorecardId)
-    .order("column_order", { ascending: false })
-    .limit(1);
+    .order("column_order", { ascending: true });
 
-  const nextOrder = (existing?.[0]?.column_order ?? -1) + 1;
+  const columns = existing ?? [];
+
+  const unfinished = columns.find((c) => c.column_label === "New Column");
+  if (unfinished) {
+    throw new Error('Rename the "New Column" you already added before adding another one.');
+  }
+
+  const allOrders = [...FIXED_ORDERS, ...columns.map((c) => c.column_order)].sort((a, b) => a - b);
+
+  let targetOrder: number;
+  if (insertBeforeOrder === undefined) {
+    targetOrder = (allOrders[allOrders.length - 1] ?? 0) + 10;
+  } else {
+    const before = [...allOrders].reverse().find((o) => o < insertBeforeOrder);
+    targetOrder =
+      before !== undefined ? Math.floor((before + insertBeforeOrder) / 2) : Math.floor(insertBeforeOrder / 2);
+  }
 
   const columnKey = `custom_${Date.now()}`;
   const { data: newCol, error } = await supabase
@@ -29,7 +51,7 @@ export async function addScorecardColumn(scorecardId: string) {
       tenant_id: user.tenant_id,
       column_key: columnKey,
       column_label: "New Column",
-      column_order: nextOrder,
+      column_order: targetOrder,
       is_visible: true,
     })
     .select()

@@ -9,13 +9,20 @@ export default async function AdminHomePage() {
     .select("id, company_name, license_tier, license_status, created_at")
     .order("created_at", { ascending: false });
 
-  const { data: userCounts } = await supabase.from("users").select("tenant_id");
-
-  const countByTenant = new Map<string, number>();
-  for (const row of userCounts ?? []) {
-    if (!row.tenant_id) continue;
-    countByTenant.set(row.tenant_id, (countByTenant.get(row.tenant_id) ?? 0) + 1);
-  }
+  // One exact count per tenant rather than fetching every user row — avoids
+  // silently undercounting if the users table ever exceeds the default
+  // PostgREST row cap.
+  const countByTenant = new Map<string, number>(
+    await Promise.all(
+      (tenants ?? []).map(async (tenant) => {
+        const { count } = await supabase
+          .from("users")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", tenant.id);
+        return [tenant.id, count ?? 0] as const;
+      }),
+    ),
+  );
 
   return (
     <div>

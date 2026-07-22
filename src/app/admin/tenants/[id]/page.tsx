@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { setLicenseStatus } from "@/app/admin/actions";
-import ActionButton from "@/components/ActionButton";
+import LicenseStatusForm from "./LicenseStatusForm";
 import CreateCompanyAdminForm from "./CreateCompanyAdminForm";
 
 export default async function TenantDetailPage({
@@ -22,34 +21,23 @@ export default async function TenantDetailPage({
     .order("created_at", { ascending: true });
 
   const hasCompanyAdmin = (users ?? []).some((u) => u.role === "company_admin");
-  const toggleStatus = tenant.license_status === "suspended" ? "active" : "suspended";
-
-  async function toggleLicense() {
-    "use server";
-    await setLicenseStatus(id, toggleStatus as "active" | "suspended");
-  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="rounded-lg border border-gray-200 bg-white p-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-navy">{tenant.company_name}</h1>
             <p className="mt-1 text-sm capitalize text-gray-500">
               {tenant.license_tier} plan &middot; {tenant.license_status}
             </p>
+            <p className="mt-1 text-xs text-gray-400">
+              License {tenant.license_start ? new Date(tenant.license_start).toLocaleDateString() : "—"}
+              {" to "}
+              {tenant.license_end ? new Date(tenant.license_end).toLocaleDateString() : "—"}
+            </p>
           </div>
-          <ActionButton
-            action={toggleLicense}
-            pendingLabel={toggleStatus === "suspended" ? "Suspending…" : "Reactivating…"}
-            className={
-              toggleStatus === "suspended"
-                ? "text-white bg-red-600 hover:bg-red-700"
-                : "text-white bg-green-600 hover:bg-green-700"
-            }
-          >
-            {toggleStatus === "suspended" ? "Suspend license" : "Reactivate license"}
-          </ActionButton>
+          <LicenseStatusForm tenantId={id} currentStatus={tenant.license_status} />
         </div>
       </div>
 

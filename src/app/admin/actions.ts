@@ -13,7 +13,7 @@ async function requireSuperAdmin() {
 }
 
 export async function createTenant(formData: FormData) {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
   const admin = createAdminClient();
 
   const companyName = String(formData.get("company_name") ?? "").trim();
@@ -22,8 +22,9 @@ export async function createTenant(formData: FormData) {
   const licenseEnd = String(formData.get("license_end") ?? "");
 
   if (!companyName) throw new Error("Company name is required");
-
-  const currentUser = await requireSuperAdmin();
+  if (licenseStart && licenseEnd && licenseEnd < licenseStart) {
+    throw new Error("License end date can't be before the start date");
+  }
 
   const { data: tenant, error } = await admin
     .from("tenants")
@@ -43,7 +44,7 @@ export async function createTenant(formData: FormData) {
   return tenant.id as string;
 }
 
-export async function setLicenseStatus(tenantId: string, status: "active" | "suspended") {
+export async function setLicenseStatus(tenantId: string, status: "active" | "suspended" | "expired") {
   await requireSuperAdmin();
   const admin = createAdminClient();
 
@@ -85,7 +86,12 @@ export async function createCompanyAdmin(formData: FormData) {
     role: "company_admin",
     tenant_id: tenantId,
   });
-  if (profileError) throw profileError;
+  if (profileError) {
+    // Don't leave an orphaned login behind — that email becomes permanently
+    // unusable for future signups otherwise, with no UI to find or fix it.
+    await admin.auth.admin.deleteUser(authUser.user.id);
+    throw profileError;
+  }
 
   revalidatePath(`/admin/tenants/${tenantId}`);
 }

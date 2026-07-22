@@ -24,5 +24,22 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     .eq("id", user.id)
     .single();
 
+  if (!profile) return null;
+
+  // A suspended or expired tenant loses access immediately, even mid-session
+  // (not just at the next login) — this is the one place every page and
+  // server action goes through to find out who's logged in.
+  if (profile.tenant_id) {
+    const { data: tenant } = await supabase
+      .from("tenants")
+      .select("license_status")
+      .eq("id", profile.tenant_id)
+      .single();
+
+    if (tenant?.license_status === "suspended" || tenant?.license_status === "expired") {
+      return null;
+    }
+  }
+
   return profile as CurrentUser | null;
 }

@@ -3,7 +3,12 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import OrgWizard from "./OrgWizard";
-import { saveOrgHierarchy, generateCascadedBSCs } from "./actions";
+import { saveOrgHierarchy, generateCascadedBSCs, loadExistingHierarchy } from "./actions";
+
+// The cascade generation below makes one or two sequential AI calls per
+// position — a large org can take a while. Give it more room than the
+// platform default before Vercel cuts the function off mid-run.
+export const maxDuration = 300;
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
@@ -32,26 +37,27 @@ export default async function OnboardingPage() {
     );
   }
 
-  // Check if already generated scorecards from org
-  const { data: existingPositions } = await supabase
-    .from("org_positions")
-    .select("*")
-    .eq("tenant_id", user.tenant_id!)
-    .order("sort_order", { ascending: true });
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("onboarding_completed")
+    .eq("id", user.tenant_id!)
+    .single();
 
   const { count: positionScorecardCount } = await supabase
     .from("position_scorecards")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", user.tenant_id!);
 
-  // If positions already saved and scorecards generated, show completed state
-  if (existingPositions && existingPositions.length > 0 && positionScorecardCount && positionScorecardCount > 0) {
+  // onboarding_completed only ever gets set once cascade generation fully
+  // succeeded for every position — a reliable "is this actually done"
+  // signal, rather than just "does at least one scorecard exist somewhere."
+  if (tenant?.onboarding_completed) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 text-center">
         <h1 className="text-xl font-semibold text-navy">Organisational Setup — Complete ✓</h1>
         <p className="text-sm text-gray-500">
-          Your organisational hierarchy has been set up and {positionScorecardCount} cascaded Balanced Scorecards
-          have been generated. View them from the Scorecards page.
+          Your organisational hierarchy has been set up and {positionScorecardCount ?? 0} cascaded Balanced
+          Scorecards have been generated. View them from the Scorecards page.
         </p>
         <div className="flex justify-center gap-3">
           <Link
@@ -66,7 +72,15 @@ export default async function OnboardingPage() {
     );
   }
 
-  return <OrgWizard saveAction={saveOrgHierarchy} generateAction={generateCascadedBSCs} />;
+  // Not complete — show the wizard, hydrated with whatever hierarchy was
+  // already saved (e.g. from a previous run that failed partway through
+  // generation), so reopening this page never silently reverts to the
+  // tiny default template and overwrites a real org chart.
+  const existingHierarchy = await loadExistingHierarchy();
+
+  return (
+    <OrgWizard saveAction={saveOrgHierarchy} generateAction={generateCascadedBSCs} existingPositions={existingHierarchy} />
+  );
 }
 
 function ResetButton() {

@@ -1,5 +1,5 @@
 import "server-only";
-import { createAnthropicClient, CLAUDE_MODEL } from "@/lib/anthropic";
+import { createAnthropicClient, CLAUDE_MODEL, friendlyAnthropicError } from "@/lib/anthropic";
 
 /**
  * Single source of truth for the platform-standard 14-column BSC template
@@ -96,13 +96,18 @@ const SCORECARD_TOOL = {
 
 export async function generateRows(prompt: string): Promise<ScorecardRowInput[]> {
   const anthropic = createAnthropicClient();
-  const response = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4096,
-    tools: [SCORECARD_TOOL],
-    tool_choice: { type: "tool", name: "submit_scorecard" },
-    messages: [{ role: "user", content: prompt }],
-  });
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 4096,
+      tools: [SCORECARD_TOOL],
+      tool_choice: { type: "tool", name: "submit_scorecard" },
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (err) {
+    throw friendlyAnthropicError(err);
+  }
 
   const toolUse = response.content.find((block) => block.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {

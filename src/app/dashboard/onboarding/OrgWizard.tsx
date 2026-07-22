@@ -251,7 +251,7 @@ export default function OrgWizard({
   const handleReview = () => {
     const errs = validateTree(hierarchy);
     if (errs.length > 0) {
-      setError(errs[0]);
+      setError(errs.length === 1 ? errs[0] : errs.map((e, i) => `${i + 1}. ${e}`).join(" "));
       return;
     }
     setError(null);

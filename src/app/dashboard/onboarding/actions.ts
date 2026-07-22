@@ -91,14 +91,77 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
 
   await insertRecursive(hierarchy, null);
 
-  // Mark onboarding as done
-  await supabase
-    .from("tenants")
-    .update({ onboarding_completed: true })
-    .eq("id", tenantId);
+  // onboarding_completed is set only once cascade generation actually
+  // succeeds for every position (see generateCascadedBSCs below) — saving
+  // the hierarchy tree is a necessary first step, not completion itself.
 
   revalidatePath("/dashboard/onboarding");
   revalidatePath("/dashboard");
+}
+
+// ─── Load Existing Hierarchy ─────────────────────────────────
+// Reconstructs the tree shape OrgWizard expects from saved org_positions
+// rows, so reopening the wizard (e.g. after a partially-failed generation)
+// shows the real hierarchy instead of silently falling back to the tiny
+// default template and overwriting it on the next save.
+
+type LoadedPositionNode = {
+  tempId: string;
+  positionType: PositionType;
+  officeDepartmentName: string;
+  sectionName?: string;
+  jobTitle: string;
+  firstName: string;
+  surname: string;
+  customFields: CustomField[];
+  children: LoadedPositionNode[];
+};
+
+export async function loadExistingHierarchy(): Promise<LoadedPositionNode | null> {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "company_admin" || !user.tenant_id) return null;
+
+  const supabase = await createClient();
+  const { data: positions } = await supabase
+    .from("org_positions")
+    .select(
+      "id, position_type, office_department_name, section_name, job_title, first_name, surname, reports_to_id, custom_fields, sort_order",
+    )
+    .eq("tenant_id", user.tenant_id)
+    .order("sort_order", { ascending: true });
+
+  if (!positions || positions.length === 0) return null;
+
+  const nodeById = new Map<string, LoadedPositionNode>();
+  for (const p of positions) {
+    const customFields: CustomField[] = Object.entries(
+      (p.custom_fields as Record<string, string>) ?? {},
+    ).map(([label, value]) => ({ label, value: String(value) }));
+
+    nodeById.set(p.id, {
+      tempId: p.id,
+      positionType: p.position_type as PositionType,
+      officeDepartmentName: p.office_department_name ?? "",
+      sectionName: p.section_name ?? undefined,
+      jobTitle: p.job_title ?? "",
+      firstName: p.first_name ?? "",
+      surname: p.surname ?? "",
+      customFields,
+      children: [],
+    });
+  }
+
+  let root: LoadedPositionNode | null = null;
+  for (const p of positions) {
+    const node = nodeById.get(p.id)!;
+    if (p.reports_to_id) {
+      nodeById.get(p.reports_to_id)?.children.push(node);
+    } else {
+      root = node;
+    }
+  }
+
+  return root;
 }
 
 // ─── AI BSC Generation ───────────────────────────────────────
@@ -117,6 +180,7 @@ type OrgPositionRow = {
   reports_to_id: string | null;
   bsc_level: string;
   sort_order: number;
+  user_id: string | null;
 };
 
 export async function generateCascadedBSCs() {
@@ -137,20 +201,17 @@ export async function generateCascadedBSCs() {
 
   if (!plan) throw new Error("You need an approved Strategic Plan before generating cascaded BSCs.");
 
-  const ai = plan.ai_generated_content as {
-    executive_summary: string;
-    strategic_pillars: string[];
-    strategic_objectives: { perspective: string; objective: string }[];
-    kpis: { objective: string; kpi: string; target?: string }[];
-  } | null;
-
-  // Load existing corporate scorecard rows for context
-  const { data: corpScorecard } = await supabase
+  // Load existing corporate scorecard rows for context. Ordered + limited
+  // (rather than .maybeSingle()) so this degrades gracefully instead of
+  // throwing if a plan ever ends up with more than one corporate scorecard.
+  const { data: corpScorecards } = await supabase
     .from("scorecards")
     .select("id")
     .eq("plan_id", plan.id)
     .eq("scorecard_type", "corporate")
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const corpScorecard = corpScorecards?.[0] ?? null;
 
   let corporateContext = "";
   if (corpScorecard) {
@@ -165,11 +226,27 @@ export async function generateCascadedBSCs() {
     }
   }
 
-  if (!corporateContext && ai) {
-    corporateContext = ai.strategic_objectives
-      .map((o) => `[${o.perspective}] ${o.objective}`)
-      .join("\n");
+  if (!corporateContext) {
+    const { data: corporateObjectives } = await supabase
+      .from("strategic_objectives")
+      .select("perspective, objective_text")
+      .eq("plan_id", plan.id);
+    if (corporateObjectives && corporateObjectives.length > 0) {
+      corporateContext = corporateObjectives
+        .map((o) => `[${o.perspective}] ${o.objective_text}`)
+        .join("\n");
+    }
   }
+
+  const { data: themesData } = await supabase
+    .from("strategic_themes")
+    .select("title, intended_result")
+    .eq("plan_id", plan.id)
+    .order("sort_order", { ascending: true });
+  const themesContext =
+    themesData && themesData.length > 0
+      ? `Strategic themes: ${themesData.map((t) => t.title).join("; ")}`
+      : "";
 
   // Load org positions
   const { data: positions } = await supabase
@@ -217,6 +294,11 @@ export async function generateCascadedBSCs() {
 
   const companyName = plan.company_name;
 
+  // A single position's AI/DB failure no longer aborts the whole cascade —
+  // every position gets a chance, and we report exactly which ones failed
+  // (and why) instead of silently marking the run "complete" regardless.
+  const failures: { positionName: string; error: string }[] = [];
+
   for (let qi = 0; qi < queue.length; qi++) {
     const pos = queue[qi];
 
@@ -224,6 +306,16 @@ export async function generateCascadedBSCs() {
     const kids = childrenOf.get(pos.id) ?? [];
     queue.push(...kids);
 
+    const posLabel = pos.section_name || pos.office_department_name || pos.job_title;
+
+    try {
+      await generateForPosition(pos);
+    } catch (err) {
+      failures.push({ positionName: posLabel, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  async function generateForPosition(pos: OrgPositionRow) {
     const fullName = [pos.first_name, pos.surname].filter(Boolean).join(" ") || pos.job_title;
     const parentContext = pos.reports_to_id
       ? positionScorecardContext.get(pos.reports_to_id) ?? corporateContext
@@ -270,6 +362,7 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
           name: `${fullName} — Individual Staff BSC`,
           department_name: posName,
           parent_scorecard_id: parentScorecardId,
+          owner_user_id: pos.user_id,
           status: "active",
         })
         .select()
@@ -287,7 +380,7 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
         scorecard_scope: "individual",
       });
 
-      continue; // Staff only get one BSC, no office/dept BSC
+      return; // Staff only get one BSC, no office/dept BSC
     }
 
     // ─── 1. Office / Department / Section BSC ─────────────
@@ -335,7 +428,7 @@ Level: ${levelLabel}
 ${bscFocus}
 
 The Corporate Strategic Plan and parent BSC context:
-${ai ? `Executive summary: ${ai.executive_summary}\nStrategic pillars: ${ai.strategic_pillars.join("; ")}` : ""}
+${themesContext}
 Parent BSC rows:
 ${parentContext}
 
@@ -353,6 +446,7 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
         name: `${posName} — ${bscSuffix}`,
         department_name: posName,
         parent_scorecard_id: parentScorecardId,
+        owner_user_id: pos.user_id,
         status: "active",
       })
       .select()
@@ -417,6 +511,7 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
         name: `${fullName} — Individual BSC`,
         department_name: posName,
         parent_scorecard_id: officeScorecard.id,
+        owner_user_id: pos.user_id,
         status: "active",
       })
       .select()
@@ -445,10 +540,28 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
     user_id: user.id,
     session_type: "bsc_generation",
     prompt_summary: `Generate cascaded BSCs from org hierarchy for ${companyName}`,
-    response_summary: `${posCount} positions → ${totalBSCs} scorecards (${nonStaffCount} × 2 office+individual + ${staffCount} × 1 staff)`,
+    response_summary:
+      failures.length === 0
+        ? `${posCount} positions → ${totalBSCs} scorecards (${nonStaffCount} × 2 office+individual + ${staffCount} × 1 staff)`
+        : `${posCount - failures.length} of ${posCount} positions succeeded; ${failures.length} failed`,
   });
+
+  // onboarding_completed only ever means "the last cascade run fully
+  // succeeded" — the background jobs (cron) rely on this flag being
+  // trustworthy, not just "some scorecard exists somewhere."
+  await supabase
+    .from("tenants")
+    .update({ onboarding_completed: failures.length === 0 })
+    .eq("id", tenantId);
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/scorecards");
   revalidatePath("/dashboard/onboarding");
+
+  if (failures.length > 0) {
+    const summary = failures.map((f) => `"${f.positionName}" (${f.error})`).join("; ");
+    throw new Error(
+      `Scorecards were generated for ${posCount - failures.length} of ${posCount} positions. Failed: ${summary}. You can try again — this will regenerate everything from scratch.`,
+    );
+  }
 }

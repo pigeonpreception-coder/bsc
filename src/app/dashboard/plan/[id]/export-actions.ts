@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { requireCompanyAdminForPlan } from "./shared";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildPlanDocumentModel } from "@/lib/plan-document-model";
 import { renderPlanDocx } from "@/lib/plan-document-docx";
@@ -11,17 +10,6 @@ import { renderPlanPdf } from "@/lib/plan-document-pdf";
 // Keep only the 3 most recent generated files per format, per plan.
 const MAX_VERSIONS_PER_TYPE = 3;
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
-
-async function requireCompanyAdminForPlan(planId: string) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "company_admin" || !user.tenant_id) throw new Error("Not authorized");
-
-  const supabase = await createClient();
-  const { data: plan } = await supabase.from("strategic_plans").select("id, tenant_id").eq("id", planId).single();
-  if (!plan || plan.tenant_id !== user.tenant_id) throw new Error("Not authorized");
-
-  return { user, plan };
-}
 
 async function pruneOldVersions(
   admin: ReturnType<typeof createAdminClient>,

@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCorporateBscView, type CorporateBscView } from "@/lib/corporate-bsc-view";
+import { getOrgStructureView, type OrgStructureNode } from "@/lib/org-structure-view";
 
 // The one shared representation of "the whole document" that every export
 // format (Word, PDF, and eventually the in-app viewer) renders from, so
@@ -14,6 +15,7 @@ export type PlanDocumentSection = {
   isPlaceholder: boolean;
   isDynamic: boolean;
   bscTable?: CorporateBscView;
+  orgStructure?: OrgStructureNode | null;
 };
 
 export type PlanDocumentModel = {
@@ -27,7 +29,7 @@ export async function buildPlanDocumentModel(planId: string): Promise<PlanDocume
 
   const { data: plan, error: planError } = await supabase
     .from("strategic_plans")
-    .select("company_name, period_start, period_end, strategic_period_years")
+    .select("company_name, period_start, period_end, strategic_period_years, tenant_id")
     .eq("id", planId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
@@ -39,7 +41,10 @@ export async function buildPlanDocumentModel(planId: string): Promise<PlanDocume
     .order("sort_order", { ascending: true });
   if (sectionsError) throw sectionsError;
 
-  const corporateBsc = await getCorporateBscView(planId);
+  const [corporateBsc, orgStructure] = await Promise.all([
+    getCorporateBscView(planId),
+    getOrgStructureView(plan.tenant_id),
+  ]);
 
   const sections: PlanDocumentSection[] = (rows ?? []).map((row) => ({
     number: row.section_number,
@@ -49,6 +54,7 @@ export async function buildPlanDocumentModel(planId: string): Promise<PlanDocume
     isPlaceholder: row.is_placeholder,
     isDynamic: row.is_dynamic,
     bscTable: row.section_number === "5.4" ? (corporateBsc ?? undefined) : undefined,
+    orgStructure: row.section_number === "2.4.1" ? orgStructure : undefined,
   }));
 
   const planPeriodLabel = plan.strategic_period_years

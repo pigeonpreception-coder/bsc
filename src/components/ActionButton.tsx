@@ -8,12 +8,15 @@ export default function ActionButton({
   pendingLabel,
   variant = "primary",
   className,
+  confirmMessage,
 }: {
   action: () => Promise<void>;
   children: React.ReactNode;
   pendingLabel: string;
   variant?: "primary" | "secondary";
   className?: string;
+  /** When set, shows a confirm() dialog before running the action. */
+  confirmMessage?: string;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +29,7 @@ export default function ActionButton({
   const resolvedClassName = `${baseClassName} ${className ?? variantClassName}`;
 
   const handleClick = () => {
+    if (confirmMessage && !confirm(confirmMessage)) return;
     setError(null);
     startTransition(async () => {
       try {

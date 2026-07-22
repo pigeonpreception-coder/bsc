@@ -17,6 +17,7 @@ import {
 } from "docx";
 import type { PlanDocumentModel, PlanDocumentSection } from "@/lib/plan-document-model";
 import type { CorporateBscView } from "@/lib/corporate-bsc-view";
+import type { OrgStructureNode } from "@/lib/org-structure-view";
 
 const NAVY = "002147";
 const GOLD = "C9A84C";
@@ -90,6 +91,39 @@ function renderBscTable(bsc: CorporateBscView | undefined): (Paragraph | Table)[
   return nodes;
 }
 
+function renderOrgStructure(root: OrgStructureNode | null | undefined): Paragraph[] {
+  if (!root) {
+    return [
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "No organisational hierarchy has been set up yet for this company.",
+            italics: true,
+            color: MUTED,
+          }),
+        ],
+      }),
+    ];
+  }
+
+  const paragraphs: Paragraph[] = [];
+  function walk(node: OrgStructureNode, depth: number) {
+    const personLine = node.personName ? ` — ${node.personName}${node.jobTitle ? ` (${node.jobTitle})` : ""}` : node.jobTitle ? ` — ${node.jobTitle}` : "";
+    paragraphs.push(
+      new Paragraph({
+        indent: { left: depth * 360 },
+        children: [
+          new TextRun({ text: `${node.positionType}: `, bold: true, color: NAVY, size: 18 }),
+          new TextRun({ text: `${node.label}${personLine}`, size: 18 }),
+        ],
+      }),
+    );
+    for (const child of node.children) walk(child, depth + 1);
+  }
+  walk(root, 0);
+  return paragraphs;
+}
+
 function sectionToNodes(section: PlanDocumentSection): (Paragraph | Table)[] {
   const nodes: (Paragraph | Table)[] = [
     new Paragraph({
@@ -111,7 +145,18 @@ function sectionToNodes(section: PlanDocumentSection): (Paragraph | Table)[] {
   }
 
   if (section.number === "5.4") {
+    if (section.content) {
+      for (const paragraph of section.content.split(/\n+/)) {
+        const trimmed = paragraph.trim();
+        if (trimmed) nodes.push(new Paragraph({ children: [new TextRun(trimmed)] }));
+      }
+    }
     nodes.push(...renderBscTable(section.bscTable));
+    return nodes;
+  }
+
+  if (section.number === "2.4.1") {
+    nodes.push(...renderOrgStructure(section.orgStructure));
     return nodes;
   }
 

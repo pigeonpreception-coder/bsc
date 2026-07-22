@@ -48,6 +48,25 @@ function renderBscTable(section: PlanDocumentSection): string {
   return `<p class="muted italic">Live from "${escapeHtml(bsc.scorecardName)}"</p>${groups}`;
 }
 
+function renderOrgStructure(section: PlanDocumentSection): string {
+  const root = section.orgStructure;
+  if (!root) {
+    return `<p class="muted italic">No organisational hierarchy has been set up yet for this company.</p>`;
+  }
+
+  function walk(node: NonNullable<PlanDocumentSection["orgStructure"]>, depth: number): string {
+    const personLine = node.personName
+      ? ` — ${escapeHtml(node.personName)}${node.jobTitle ? ` (${escapeHtml(node.jobTitle)})` : ""}`
+      : node.jobTitle
+        ? ` — ${escapeHtml(node.jobTitle)}`
+        : "";
+    const children = node.children.map((c) => walk(c, depth + 1)).join("");
+    return `<div class="org-node" style="margin-left:${depth * 20}px"><span class="org-type">${escapeHtml(node.positionType)}:</span> ${escapeHtml(node.label)}${personLine}</div>${children}`;
+  }
+
+  return walk(root, 0);
+}
+
 function renderSection(section: PlanDocumentSection): string {
   const tag = section.depth === 1 ? "h1" : section.depth === 2 ? "h2" : "h3";
   const anchor = `sec-${section.number.replace(/\./g, "-")}`;
@@ -58,7 +77,16 @@ function renderSection(section: PlanDocumentSection): string {
     return `<div class="section${pageBreakClass}">${heading}<p class="placeholder">Pending framework specification — awaiting content.</p></div>`;
   }
   if (section.number === "5.4") {
-    return `<div class="section${pageBreakClass}">${heading}${renderBscTable(section)}</div>`;
+    const framing = (section.content ?? "")
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join("");
+    return `<div class="section${pageBreakClass}">${heading}${framing}${renderBscTable(section)}</div>`;
+  }
+  if (section.number === "2.4.1") {
+    return `<div class="section${pageBreakClass}">${heading}${renderOrgStructure(section)}</div>`;
   }
   if (section.isDynamic) {
     return `<div class="section${pageBreakClass}">${heading}<p class="muted italic">Not yet available.</p></div>`;
@@ -119,6 +147,8 @@ export function renderPlanHtml(model: PlanDocumentModel): string {
   table.bsc-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 8.5pt; }
   table.bsc-table th { background: #eef1f7; text-align: left; padding: 4px 6px; border-bottom: 1px solid #ccc; }
   table.bsc-table td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+  .org-node { font-size: 10pt; padding: 2px 0; }
+  .org-type { color: ${NAVY}; font-weight: bold; }
 </style>
 </head>
 <body>

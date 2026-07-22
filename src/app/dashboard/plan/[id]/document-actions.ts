@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { requireCompanyAdminForPlan } from "./shared";
 import { generatePlanDocumentSections } from "@/lib/plan-document-generation";
 import {
   generateCorporateObjectives,
@@ -19,17 +19,6 @@ import {
 // beyond need the themes generated first, so they're a separate step.
 const SECTIONS_1_TO_4 = ["1", "2", "3", "4"];
 const SECTIONS_6_TO_9 = ["6", "7", "8", "9"];
-
-async function requireCompanyAdminForPlan(planId: string) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "company_admin" || !user.tenant_id) throw new Error("Not authorized");
-
-  const supabase = await createClient();
-  const { data: plan } = await supabase.from("strategic_plans").select("id, tenant_id").eq("id", planId).single();
-  if (!plan || plan.tenant_id !== user.tenant_id) throw new Error("Not authorized");
-
-  return plan;
-}
 
 export async function generatePlanDocumentIntro(planId: string) {
   await requireCompanyAdminForPlan(planId);
@@ -58,8 +47,22 @@ export async function generatePlanSection5(planId: string) {
   await requireCompanyAdminForPlan(planId);
 
   const objectives = await generateCorporateObjectives(planId);
-  const themes = await generateStrategicThemes(planId, objectives);
-  await alignObjectivesToThemes(planId, objectives, themes);
+
+  // These three steps aren't wrapped in a real database transaction (the
+  // Supabase client doesn't support one across calls), so a failure here
+  // can leave fresh objectives paired with stale/unlinked themes. Rather
+  // than surface a bare, confusing error, say plainly what happened and
+  // that a full retry (which redoes all three steps from scratch) fixes it.
+  let themes;
+  try {
+    themes = await generateStrategicThemes(planId, objectives);
+    await alignObjectivesToThemes(planId, objectives, themes);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `Corporate Objectives were regenerated successfully, but Strategic Themes/alignment failed: ${message}. Click "Regenerate Section 5" again — it redoes all three steps cleanly from the new objectives.`,
+    );
+  }
 
   const extraContext = `\nTHE FOLLOWING HAVE ALREADY BEEN FINALIZED — Section 5.2's content must accurately describe these and only these, do not invent different ones:\n\nStrategic Themes:\n${formatThemesSummary(themes)}\n\nCorporate Strategic Objectives:\n${formatObjectivesSummary(objectives)}`;
 

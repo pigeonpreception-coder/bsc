@@ -116,7 +116,11 @@ export async function generatePlanDocumentSections(
   }
 
   const allNodesInScope = flattenSections(requestedTopNodes);
-  const nodesToWrite = allNodesInScope.filter((n) => n.kind === "ai_generated");
+  // 5.4 renders the live Corporate BSC table, not AI prose, but the template
+  // still calls for a short AI-written framing paragraph above that table —
+  // its own guidance text (included in the prompt below) tells the AI to
+  // keep it brief since the table itself carries the substance.
+  const nodesToWrite = allNodesInScope.filter((n) => n.kind === "ai_generated" || n.kind === "dynamic_bsc");
 
   const industryLine = plan.industry === "Others" ? plan.industry_other : plan.industry;
   const sectorLine = plan.sector === "Others" ? plan.sector_other : plan.sector;
@@ -172,6 +176,27 @@ Call the submit_plan_sections tool with your answer.`;
   );
   const extraSections = sections.filter((s) => !nodeByNumber.has(s.section_number));
 
+  // Make sure the AI actually wrote every section it was asked for, rather
+  // than silently storing a blank section if the model skipped or
+  // truncated one.
+  const missing = nodesToWrite.filter((n) => !contentByNumber.get(n.number)?.trim());
+  if (missing.length > 0) {
+    throw new Error(
+      `The AI didn't return content for: ${missing.map((n) => `${n.number} ${n.title}`).join(", ")}. Please try regenerating.`,
+    );
+  }
+
+  // AI-added subsections nest under their parent by section_number so they
+  // render in the right place (not just appended after every other node).
+  const extraByParentNumber = new Map<string, GeneratedSection[]>();
+  for (const extra of extraSections) {
+    const parentNode = extra.parent_section_number ? nodeByNumber.get(extra.parent_section_number) : undefined;
+    if (!extra.parent_section_number || !parentNode || !parentNode.isAiAddable) continue; // malformed AI output — skip rather than fail the whole batch
+    const list = extraByParentNumber.get(extra.parent_section_number) ?? [];
+    list.push(extra);
+    extraByParentNumber.set(extra.parent_section_number, list);
+  }
+
   // Regenerating these top-level sections replaces their previous rows —
   // parent_section_id cascades, so this also clears their old subsections.
   const { error: deleteError } = await supabase
@@ -212,32 +237,32 @@ Call the submit_plan_sections tool with your answer.`;
     for (const child of node.children ?? []) {
       await insertNode(child, data.id as string);
     }
+
+    // Insert this node's AI-added subsections right after its own template
+    // children, so they land in reading order instead of always trailing
+    // behind every requested section regardless of where they belong.
+    const extras = extraByParentNumber.get(node.number) ?? [];
+    for (const extra of extras) {
+      const { error: extraError } = await supabase.from("plan_sections").insert({
+        tenant_id: plan.tenant_id,
+        plan_id: planId,
+        section_number: extra.section_number,
+        section_title: extra.section_title,
+        parent_section_id: data.id,
+        depth: Math.min(node.depth + 1, 3),
+        content: extra.content,
+        is_placeholder: false,
+        is_dynamic: false,
+        is_ai_addable: false,
+        sort_order: sortOrder++,
+        last_generated_at: now,
+      });
+      if (extraError) throw extraError;
+    }
   }
 
   for (const node of requestedTopNodes) {
     await insertNode(node, null);
-  }
-
-  for (const extra of extraSections) {
-    const parentNode = extra.parent_section_number ? nodeByNumber.get(extra.parent_section_number) : undefined;
-    const parentId = extra.parent_section_number ? idByNumber.get(extra.parent_section_number) : undefined;
-    if (!parentNode || !parentId || !parentNode.isAiAddable) continue; // malformed AI output — skip rather than fail the whole batch
-
-    const { error } = await supabase.from("plan_sections").insert({
-      tenant_id: plan.tenant_id,
-      plan_id: planId,
-      section_number: extra.section_number,
-      section_title: extra.section_title,
-      parent_section_id: parentId,
-      depth: Math.min(parentNode.depth + 1, 3),
-      content: extra.content,
-      is_placeholder: false,
-      is_dynamic: false,
-      is_ai_addable: false,
-      sort_order: sortOrder++,
-      last_generated_at: now,
-    });
-    if (error) throw error;
   }
 
   return { sectionsWritten: contentByNumber.size + extraSections.length };

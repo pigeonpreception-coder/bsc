@@ -9,7 +9,6 @@ import SupportingDocumentsList, { type SupportingDocument } from "./SupportingDo
 import StatusRowList, { type StatusRowEntry } from "./StatusRowList";
 import { INDUSTRIES, SECTORS, PRODUCT_SERVICE_STATUS_OPTIONS, IMPORTANCE_STATUS_OPTIONS } from "./constants";
 import { saveBusinessProfileDraft, type BusinessProfileDraft } from "./actions";
-import { generateStrategicPlan } from "@/app/dashboard/plan/[id]/actions";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold";
@@ -88,8 +87,8 @@ export default function BusinessProfileForm({
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialLastSavedAt);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isGenerating, startGenerating] = useTransition();
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [isContinuing, startContinuing] = useTransition();
+  const [continueError, setContinueError] = useState<string | null>(null);
   const router = useRouter();
 
   const markTouched = (field: string) => setTouched((t) => ({ ...t, [field]: true }));
@@ -194,16 +193,15 @@ export default function BusinessProfileForm({
   const errorFor = (field: string, condition: boolean, message: string) =>
     touched[field] && !condition ? message : undefined;
 
-  const handleGenerate = () => {
-    setGenerateError(null);
-    startGenerating(async () => {
+  const handleContinue = () => {
+    setContinueError(null);
+    startContinuing(async () => {
       try {
         const result = await saveBusinessProfileDraft(planIdRef.current, buildDraft());
         planIdRef.current = result.planId;
-        await generateStrategicPlan(result.planId);
         router.push(`/dashboard/plan/${result.planId}`);
       } catch (err) {
-        setGenerateError(err instanceof Error ? err.message : "Failed to generate. Please try again.");
+        setContinueError(err instanceof Error ? err.message : "Failed to save. Please try again.");
       }
     });
   };
@@ -711,22 +709,22 @@ export default function BusinessProfileForm({
       </section>
 
       <div className="mt-8 rounded-lg border border-gray-200 bg-white p-6 text-center">
-        {generateError && <p className="mb-3 text-sm text-red-600">{generateError}</p>}
+        {continueError && <p className="mb-3 text-sm text-red-600">{continueError}</p>}
         <button
           type="button"
-          disabled={!allMandatoryComplete || isGenerating}
-          onClick={handleGenerate}
+          disabled={!allMandatoryComplete || isContinuing}
+          onClick={handleContinue}
           className={`rounded-md px-6 py-3 text-sm font-semibold ${
             allMandatoryComplete
               ? "bg-gold text-navy hover:bg-gold-light"
               : "cursor-not-allowed bg-gray-200 text-gray-400"
           }`}
         >
-          {isGenerating ? "Our AI is building your Strategic Plan. This may take 1–2 minutes…" : "Generate My Strategic Plan →"}
+          {isContinuing ? "Saving…" : "Continue to Strategic Plan Document →"}
         </button>
         {!allMandatoryComplete && (
           <p className="mt-2 text-xs text-gray-400">
-            Complete all mandatory fields above ({completedCount} of {totalCount} done) to unlock generation.
+            Complete all mandatory fields above ({completedCount} of {totalCount} done) to continue.
           </p>
         )}
       </div>

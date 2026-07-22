@@ -30,6 +30,11 @@ export default function CascadingList({
     onChange([...list, { name: "", description: "" }]);
   };
 
+  const removeEntry = (index: number) => {
+    if (list.length <= 1) return;
+    onChange(list.filter((_, i) => i !== index));
+  };
+
   const lastIndex = list.length - 1;
   const lastComplete = list[lastIndex].name.trim().length >= 3 && list[lastIndex].description.trim().length > 0;
 
@@ -37,25 +42,32 @@ export default function CascadingList({
     <div className="space-y-4">
       {list.map((entry, index) => {
         const nameReady = entry.name.trim().length >= 3;
-        const isLast = index === lastIndex;
-        const isLocked = !isLast; // already-completed entries are read-only, not deletable
 
         return (
           <div key={index} className="space-y-2 rounded-md border border-gray-100 bg-gray-50/50 p-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
+            <div className="flex items-start justify-between gap-2">
+              <label className="block flex-1 text-sm font-medium text-gray-700">
                 {nameLabel(index)}
                 <span className="text-red-600"> *</span>
               </label>
-              <input
-                type="text"
-                value={entry.name}
-                placeholder={namePlaceholder}
-                disabled={isLocked}
-                onChange={(e) => updateEntry(index, { name: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold disabled:bg-gray-100 disabled:text-gray-500"
-              />
+              {list.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeEntry(index)}
+                  className="text-xs font-medium text-red-500 hover:text-red-700"
+                  title="Remove this entry"
+                >
+                  Remove
+                </button>
+              )}
             </div>
+            <input
+              type="text"
+              value={entry.name}
+              placeholder={namePlaceholder}
+              onChange={(e) => updateEntry(index, { name: e.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
+            />
 
             {nameReady && (
               <div>
@@ -66,10 +78,9 @@ export default function CascadingList({
                 <textarea
                   value={entry.description}
                   placeholder={descriptionPlaceholder}
-                  disabled={isLocked}
                   rows={2}
                   onChange={(e) => updateEntry(index, { description: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold disabled:bg-gray-100 disabled:text-gray-500"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold"
                 />
               </div>
             )}

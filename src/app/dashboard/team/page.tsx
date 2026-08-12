@@ -10,13 +10,6 @@ export default async function TeamPage() {
   if (user.role !== "company_admin") redirect("/dashboard");
 
   const supabase = await createClient();
-  const { data: plan } = await supabase
-    .from("strategic_plans")
-    .select("questionnaire_answers")
-    .eq("tenant_id", user.tenant_id)
-    .limit(1)
-    .maybeSingle();
-  const departments: string[] = plan?.questionnaire_answers?.departments ?? [];
 
   const { data: members } = await supabase
     .from("users")
@@ -26,9 +19,23 @@ export default async function TeamPage() {
 
   const { data: positions } = await supabase
     .from("org_positions")
-    .select("id, office_department_name, section_name, job_title, first_name, surname, user_id")
+    .select("id, position_type, office_department_name, section_name, job_title, first_name, surname, user_id")
     .eq("tenant_id", user.tenant_id)
     .order("sort_order", { ascending: true });
+
+  // The org chart is the real source of department/section names — not the
+  // onboarding questionnaire's free-text departments list, which can go
+  // stale or disagree with what was actually set up in the Org Wizard (see
+  // the current-state assessment's duplicate-department finding).
+  const DEPARTMENT_POSITION_TYPES = new Set(["non_executive", "section_supervisor"]);
+  const departments = [
+    ...new Set(
+      (positions ?? [])
+        .filter((p) => DEPARTMENT_POSITION_TYPES.has(p.position_type))
+        .map((p) => (p.position_type === "section_supervisor" ? p.section_name : p.office_department_name))
+        .filter((name): name is string => Boolean(name)),
+    ),
+  ].sort();
 
   const positionLabel = (p: { job_title: string; office_department_name: string; section_name: string | null }) =>
     `${p.job_title} — ${p.section_name || p.office_department_name}`;

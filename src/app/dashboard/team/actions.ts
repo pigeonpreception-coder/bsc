@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { inviteUserAccount, type UserRole } from "@/lib/user-invite";
 
 export async function addTeamMember(formData: FormData) {
   const user = await getCurrentUser();
@@ -42,38 +43,21 @@ export async function addTeamMember(formData: FormData) {
 
   const origin = (await headers()).get("origin");
 
-  // inviteUserByEmail doesn't support PKCE (the invite is opened by the
-  // invitee, not the admin who sent it, so there's no shared code_verifier
-  // between the two) — it delivers tokens as a URL hash fragment instead,
-  // which the browser client auto-detects on load. Redirect straight to the
-  // set-password page rather than through the /auth/callback ?code= route
-  // the password-reset flow uses.
-  const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${origin}/auth/reset-password`,
-  });
-  if (authError) throw authError;
-
-  const { error: profileError } = await admin.from("users").insert({
-    id: authUser.user.id,
+  const invited = await inviteUserAccount({
     email,
-    full_name: fullName || null,
-    role,
-    tenant_id: user.tenant_id,
+    fullName: fullName || null,
+    role: role as UserRole,
+    tenantId: user.tenant_id,
     department,
+    origin,
   });
-  if (profileError) {
-    // Don't leave an orphaned login behind — that email becomes permanently
-    // unusable for future signups otherwise, with no UI to find or fix it.
-    await admin.auth.admin.deleteUser(authUser.user.id);
-    throw profileError;
-  }
 
   await admin.from("audit_log").insert({
     tenant_id: user.tenant_id,
     user_id: user.id,
     action: "invite_team_member",
     resource_type: "user",
-    resource_id: authUser.user.id,
+    resource_id: invited.id,
     old_value: null,
     new_value: { email, full_name: fullName || null, role, department },
   });
@@ -81,7 +65,7 @@ export async function addTeamMember(formData: FormData) {
   if (positionId) {
     const { data: linked, error: linkError } = await admin
       .from("org_positions")
-      .update({ user_id: authUser.user.id })
+      .update({ user_id: invited.id })
       .eq("id", positionId)
       .eq("tenant_id", user.tenant_id)
       .is("user_id", null)

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { inviteUserAccount } from "@/lib/user-invite";
 
 async function requireSuperAdmin() {
   const user = await getCurrentUser();
@@ -100,33 +101,20 @@ export async function createCompanyAdmin(formData: FormData) {
 
   const origin = (await headers()).get("origin");
 
-  // See addTeamMember in dashboard/team/actions.ts for why this redirects
-  // straight to /auth/reset-password rather than through /auth/callback.
-  const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${origin}/auth/reset-password`,
-  });
-  if (authError) throw authError;
-
-  const { error: profileError } = await admin.from("users").insert({
-    id: authUser.user.id,
+  const invited = await inviteUserAccount({
     email,
-    full_name: fullName || null,
+    fullName: fullName || null,
     role: "company_admin",
-    tenant_id: tenantId,
+    tenantId,
+    origin,
   });
-  if (profileError) {
-    // Don't leave an orphaned login behind — that email becomes permanently
-    // unusable for future signups otherwise, with no UI to find or fix it.
-    await admin.auth.admin.deleteUser(authUser.user.id);
-    throw profileError;
-  }
 
   await admin.from("audit_log").insert({
     tenant_id: tenantId,
     user_id: currentUser.id,
     action: "create_company_admin",
     resource_type: "user",
-    resource_id: authUser.user.id,
+    resource_id: invited.id,
     old_value: null,
     new_value: { email, full_name: fullName || null, role: "company_admin" },
   });

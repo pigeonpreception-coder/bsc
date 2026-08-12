@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,17 +92,18 @@ export async function createCompanyAdmin(formData: FormData) {
 
   const tenantId = String(formData.get("tenant_id") ?? "");
   const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
   const fullName = String(formData.get("full_name") ?? "").trim();
 
-  if (!tenantId || !email || !password) {
-    throw new Error("Tenant, email, and password are required");
+  if (!tenantId || !email) {
+    throw new Error("Tenant and email are required");
   }
 
-  const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  const origin = (await headers()).get("origin");
+
+  // See addTeamMember in dashboard/team/actions.ts for why this redirects
+  // straight to /auth/reset-password rather than through /auth/callback.
+  const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${origin}/auth/reset-password`,
   });
   if (authError) throw authError;
 

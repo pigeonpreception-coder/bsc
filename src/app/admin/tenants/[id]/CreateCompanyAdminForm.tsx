@@ -41,18 +41,15 @@ export default function CreateCompanyAdminForm({ tenantId }: { tenantId: string 
         </label>
         <input id="email" name="email" type="email" required className={inputClass} />
       </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-          Temporary password
-        </label>
-        <input id="password" name="password" type="text" required minLength={8} className={inputClass} />
-      </div>
+      <p className="text-xs text-gray-400">
+        They&apos;ll get an email invite to set their own password — no need to create one for them.
+      </p>
       <button
         type="submit"
         disabled={isPending}
         className="w-full rounded-md bg-navy px-3 py-2 text-sm font-semibold text-white hover:bg-navy-light disabled:opacity-50"
       >
-        {isPending ? "Creating…" : "Create Company Admin"}
+        {isPending ? "Sending invite…" : "Send Invite"}
       </button>
     </form>
   );

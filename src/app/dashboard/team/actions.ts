@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -11,25 +12,29 @@ export async function addTeamMember(formData: FormData) {
   }
 
   const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
   const fullName = String(formData.get("full_name") ?? "").trim();
   const role = String(formData.get("role") ?? "staff");
   const department = String(formData.get("department") ?? "").trim();
   const positionId = String(formData.get("position_id") ?? "").trim();
 
-  if (!email || !password || !department) {
-    throw new Error("Email, password, and department are required");
+  if (!email || !department) {
+    throw new Error("Email and department are required");
   }
   if (!["manager", "staff", "viewer"].includes(role)) {
     throw new Error("Invalid role");
   }
 
   const admin = createAdminClient();
+  const origin = (await headers()).get("origin");
 
-  const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
+  // inviteUserByEmail doesn't support PKCE (the invite is opened by the
+  // invitee, not the admin who sent it, so there's no shared code_verifier
+  // between the two) — it delivers tokens as a URL hash fragment instead,
+  // which the browser client auto-detects on load. Redirect straight to the
+  // set-password page rather than through the /auth/callback ?code= route
+  // the password-reset flow uses.
+  const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${origin}/auth/reset-password`,
   });
   if (authError) throw authError;
 

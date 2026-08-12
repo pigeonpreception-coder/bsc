@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createNotification } from "@/lib/notifications";
 
 export type UserRole = "company_admin" | "manager" | "staff" | "viewer";
 
@@ -51,6 +52,17 @@ export async function inviteUserAccount(params: InviteUserAccountParams): Promis
     await admin.auth.admin.deleteUser(authUser.user.id);
     throw profileError;
   }
+
+  // In-app only — Supabase's own invite email is the actionable one (it
+  // carries the set-password link); this just greets them once they arrive,
+  // since the bell isn't visible until after they've logged in anyway.
+  await createNotification(admin, {
+    tenantId: params.tenantId,
+    userId: authUser.user.id,
+    type: "account_created",
+    message: "Welcome to Safina BSC Platform. Your account is ready.",
+    link: "/dashboard",
+  });
 
   return { id: authUser.user.id };
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { sendNotificationEmail } from "./email";
 
-export type NotificationType = "position_assigned" | "weekly_advisory_ready";
+export type NotificationType = "position_assigned" | "weekly_advisory_ready" | "account_created" | "plan_approved";
 
 export type CreateNotificationParams = {
   tenantId: string;

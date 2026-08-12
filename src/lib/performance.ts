@@ -165,6 +165,34 @@ export function computeCompositeScore(
   return ownScore * ownWeight + avgChild * subWeight;
 }
 
+/**
+ * Depth of a position in the reports_to_id chain, root = 0. Walked
+ * iteratively with a visited set rather than recursed, so a corrupted
+ * hierarchy (a reports_to_id cycle) can't stack-overflow or infinite-loop —
+ * it just stops at the point the cycle is detected instead. The org chart
+ * is meant to be a tree and nothing in the app can currently create a
+ * cycle through normal use, but this is cheap insurance against bad data
+ * (a bad migration, a manual DB edit) rather than a crash.
+ */
+export function computePositionDepth(posId: string, positionMap: Map<string, { reports_to_id: string | null }>): number {
+  const visited = new Set<string>();
+  let depth = 0;
+  let currentId: string | null = posId;
+
+  while (currentId) {
+    if (visited.has(currentId)) break;
+    visited.add(currentId);
+
+    const pos = positionMap.get(currentId);
+    if (!pos || !pos.reports_to_id) break;
+
+    depth++;
+    currentId = pos.reports_to_id;
+  }
+
+  return depth;
+}
+
 // ─── Main Calculation Function ───────────────────────────────
 
 export async function calculatePerformanceScores(
@@ -243,17 +271,10 @@ export async function calculatePerformanceScores(
     ownScoreValues.set(pos.id, score.ownScore);
   }
 
-  // Compute composite scores bottom-up
-  // Sort positions by depth (deepest first)
-  function getDepth(posId: string): number {
-    const pos = positionMap.get(posId);
-    if (!pos || !pos.reports_to_id) return 0;
-    return 1 + getDepth(pos.reports_to_id);
-  }
-
+  // Compute composite scores bottom-up — sort positions by depth (deepest first)
   const sortedPositions = (positions as OrgPosition[])
     .filter((p) => p.position_type !== "board")
-    .sort((a, b) => getDepth(b.id) - getDepth(a.id));
+    .sort((a, b) => computePositionDepth(b.id, positionMap) - computePositionDepth(a.id, positionMap));
 
   const compositeScores = new Map<string, number>();
 

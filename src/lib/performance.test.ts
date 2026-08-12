@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { weightedAverage, computeScorecardScore, computeCompositeScore, type CascadeWeights } from "./performance";
+import {
+  weightedAverage,
+  computeScorecardScore,
+  computeCompositeScore,
+  computePositionDepth,
+  type CascadeWeights,
+} from "./performance";
 
 const WEIGHTS: CascadeWeights = {
   section_own_weight: 0.4,
@@ -121,5 +127,39 @@ describe("computeCompositeScore (the cascade rule)", () => {
   it("falls back to an even 50/50 split for an unrecognized position_type with children", () => {
     const result = computeCompositeScore("board", 100, [0], WEIGHTS);
     expect(result).toBe(50);
+  });
+});
+
+describe("computePositionDepth", () => {
+  it("a root position (no reports_to_id) has depth 0", () => {
+    const map = new Map([["root", { reports_to_id: null }]]);
+    expect(computePositionDepth("root", map)).toBe(0);
+  });
+
+  it("walks a normal chain up to the root", () => {
+    const map = new Map([
+      ["root", { reports_to_id: null }],
+      ["mid", { reports_to_id: "root" }],
+      ["leaf", { reports_to_id: "mid" }],
+    ]);
+    expect(computePositionDepth("leaf", map)).toBe(2);
+    expect(computePositionDepth("mid", map)).toBe(1);
+    expect(computePositionDepth("root", map)).toBe(0);
+  });
+
+  it("returns 0 for a position that isn't in the map at all", () => {
+    expect(computePositionDepth("missing", new Map())).toBe(0);
+  });
+
+  it("terminates instead of looping forever on a corrupted cyclic hierarchy", () => {
+    // a -> b -> c -> a, a data-integrity bug that should never happen through
+    // normal use but shouldn't hang or stack-overflow if it ever does
+    const map = new Map([
+      ["a", { reports_to_id: "b" }],
+      ["b", { reports_to_id: "c" }],
+      ["c", { reports_to_id: "a" }],
+    ]);
+    expect(() => computePositionDepth("a", map)).not.toThrow();
+    expect(Number.isFinite(computePositionDepth("a", map))).toBe(true);
   });
 });

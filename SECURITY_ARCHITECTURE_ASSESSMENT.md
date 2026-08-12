@@ -1,5 +1,7 @@
 # Safina BSC Platform — Architecture & Security Assessment
 
+**⚠️ Point-in-time snapshot, not kept up to date.** This reflects the codebase as of the first pass of fixes in this session (2026-08-12, early). Most of the gaps it lists below — audit logging coverage, rate limiting, the invite flow, the tenant-isolation issue in §2, pagination, cron concurrency — were addressed in later work the same day. [SAFINA_CURRENT_STATE_ASSESSMENT.md](SAFINA_CURRENT_STATE_ASSESSMENT.md) is the current source of truth; this file is kept only as a historical record of that first pass.
+
 **Scope of this document:** an honest snapshot of what this codebase actually is today, a prioritized gap list, and what was changed in this session. This is deliberately *not* a claim of ISO 27001 / SOC 2 / GDPR compliance, multi-region readiness, or "hundreds of millions of users" scale — none of that is true of the current system, and claiming it would be actively misleading to anyone who reads this file later (an auditor, a customer's security team, a future contributor).
 
 ## 1. What this system is today

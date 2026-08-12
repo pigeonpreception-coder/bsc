@@ -19,10 +19,24 @@ export async function addScorecardColumn(scorecardId: string, insertBeforeOrder?
 
   const supabase = await createClient();
 
+  // scorecardId is caller-supplied; RLS's insert check only validates the
+  // new row's own tenant_id, not that scorecardId belongs to this tenant —
+  // without this, a company_admin could plant a column on another tenant's
+  // scorecard (see the sibling delete/rename actions below, which already
+  // verify ownership this way).
+  const { data: scorecard } = await supabase
+    .from("scorecards")
+    .select("id")
+    .eq("id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!scorecard) throw new Error("Not authorized");
+
   const { data: existing } = await supabase
     .from("scorecard_columns")
     .select("id, column_order, column_label")
     .eq("scorecard_id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
     .order("column_order", { ascending: true });
 
   const columns = existing ?? [];
@@ -157,6 +171,29 @@ export async function updateCellValue(
   if (user.role !== "company_admin") throw new Error("Not authorized");
 
   const supabase = await createClient();
+
+  // row_id/column_id are only unique together globally, not per-tenant —
+  // without verifying scorecardId/rowId/columnId all belong to this tenant,
+  // a company_admin could upsert a cell value keyed to another tenant's
+  // row+column pair (tagged with their own tenant_id), which then blocks
+  // the real owner's future edits to that cell under RLS.
+  const { data: column } = await supabase
+    .from("scorecard_columns")
+    .select("id")
+    .eq("id", columnId)
+    .eq("scorecard_id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!column) throw new Error("Not authorized");
+
+  const { data: row } = await supabase
+    .from("scorecard_rows")
+    .select("id")
+    .eq("id", rowId)
+    .eq("scorecard_id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!row) throw new Error("Not authorized");
 
   const { error } = await supabase.from("scorecard_cell_values").upsert(
     {

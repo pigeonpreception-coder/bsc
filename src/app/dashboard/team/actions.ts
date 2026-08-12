@@ -97,6 +97,18 @@ export async function assignPosition(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // targetUserId is caller-supplied; nothing downstream otherwise checks it
+  // belongs to this tenant (the admin client bypasses RLS), so without this
+  // a company_admin could link a position — and its assignment email — to
+  // a user account in a completely different tenant.
+  const { data: targetUser } = await admin
+    .from("users")
+    .select("email")
+    .eq("id", targetUserId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!targetUser) throw new Error("Not authorized");
+
   let department: string | null = null;
   if (positionId) {
     const { data: targetPosition } = await admin
@@ -135,7 +147,6 @@ export async function assignPosition(formData: FormData) {
     }
 
     const message = department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.";
-    const { data: targetUser } = await admin.from("users").select("email").eq("id", targetUserId).maybeSingle();
 
     await createNotification(admin, {
       tenantId: user.tenant_id,

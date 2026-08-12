@@ -14,8 +14,8 @@ export async function addTeamMember(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
   const role = String(formData.get("role") ?? "staff");
-  const department = String(formData.get("department") ?? "").trim();
   const positionId = String(formData.get("position_id") ?? "").trim();
+  let department = String(formData.get("department") ?? "").trim();
 
   if (!email || !department) {
     throw new Error("Email and department are required");
@@ -25,6 +25,21 @@ export async function addTeamMember(formData: FormData) {
   }
 
   const admin = createAdminClient();
+
+  // org_positions.office_department_name is the org chart's real
+  // department — when a position is chosen, it overrides whatever was
+  // separately typed/selected above rather than letting the two disagree
+  // (see the current-state assessment's duplicate-department finding).
+  if (positionId) {
+    const { data: position } = await admin
+      .from("org_positions")
+      .select("office_department_name, section_name")
+      .eq("id", positionId)
+      .eq("tenant_id", user.tenant_id)
+      .maybeSingle();
+    if (position) department = position.section_name || position.office_department_name;
+  }
+
   const origin = (await headers()).get("origin");
 
   // inviteUserByEmail doesn't support PKCE (the invite is opened by the
@@ -97,10 +112,11 @@ export async function assignPosition(formData: FormData) {
 
   const admin = createAdminClient();
 
+  let department: string | null = null;
   if (positionId) {
     const { data: targetPosition } = await admin
       .from("org_positions")
-      .select("user_id")
+      .select("user_id, office_department_name, section_name")
       .eq("id", positionId)
       .eq("tenant_id", user.tenant_id)
       .single();
@@ -108,6 +124,7 @@ export async function assignPosition(formData: FormData) {
     if (targetPosition?.user_id && targetPosition.user_id !== targetUserId) {
       throw new Error("That position is already held by someone else — unassign them first.");
     }
+    department = targetPosition?.section_name || targetPosition?.office_department_name || null;
   }
 
   const { error: clearError } = await admin
@@ -124,6 +141,13 @@ export async function assignPosition(formData: FormData) {
       .eq("id", positionId)
       .eq("tenant_id", user.tenant_id);
     if (assignError) throw assignError;
+
+    // Keep users.department in sync with the org chart going forward.
+    // Only touched on assignment, not on unassignment, so someone between
+    // positions still shows a sensible last-known label instead of blank.
+    if (department) {
+      await admin.from("users").update({ department }).eq("id", targetUserId).eq("tenant_id", user.tenant_id);
+    }
   }
 
   revalidatePath("/dashboard/team");

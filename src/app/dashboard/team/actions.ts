@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount, type UserRole } from "@/lib/user-invite";
+import { createNotification } from "@/lib/notifications";
 
 export async function addTeamMember(formData: FormData) {
   const user = await getCurrentUser();
@@ -132,6 +133,14 @@ export async function assignPosition(formData: FormData) {
     if (department) {
       await admin.from("users").update({ department }).eq("id", targetUserId).eq("tenant_id", user.tenant_id);
     }
+
+    await createNotification(admin, {
+      tenantId: user.tenant_id,
+      userId: targetUserId,
+      type: "position_assigned",
+      message: department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.",
+      link: "/dashboard",
+    });
   }
 
   revalidatePath("/dashboard/team");

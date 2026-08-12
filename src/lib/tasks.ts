@@ -1,6 +1,7 @@
 import "server-only";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { createAnthropicClient, CLAUDE_MODEL } from "./anthropic";
+import { createNotification } from "./notifications";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -370,6 +371,16 @@ Do not use bullet points. Write in paragraph form.`;
     advisory_text: text,
     week_start: weekStart.toISOString().split("T")[0],
   });
+
+  if (position.user_id) {
+    await createNotification(supabase, {
+      tenantId,
+      userId: position.user_id,
+      type: "weekly_advisory_ready",
+      message: "Your weekly performance advisory is ready.",
+      link: "/dashboard",
+    });
+  }
 
   return text;
 }

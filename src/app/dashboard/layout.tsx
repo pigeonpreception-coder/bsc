@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
+import NotificationBell from "./NotificationBell";
 
 const ROLE_LABELS: Record<string, string> = {
   company_admin: "Company Admin",
@@ -19,6 +20,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let planId: string | null = null;
   let hasActivePlan = false;
+  let notifications: { id: string; notification_type: string; message: string; link: string | null; created_at: string }[] = [];
+  let unreadNotificationCount = 0;
   if (user.tenant_id) {
     const supabase = await createClient();
     const { data: plan } = await supabase
@@ -29,6 +32,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .maybeSingle();
     planId = plan?.id ?? null;
     hasActivePlan = plan?.status === "active";
+
+    const { data: recentNotifications } = await supabase
+      .from("notifications")
+      .select("id, notification_type, message, link, created_at")
+      .eq("tenant_id", user.tenant_id)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    notifications = recentNotifications ?? [];
+
+    const { count } = await supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", user.tenant_id)
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+    unreadNotificationCount = count ?? 0;
   }
 
   return (
@@ -52,9 +72,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
             )}
           </nav>
         </div>
-        <form action={logout}>
-          <button className="text-sm text-white/80 hover:text-white">Sign out</button>
-        </form>
+        <div className="flex items-center gap-4">
+          {user.tenant_id && <NotificationBell notifications={notifications} unreadCount={unreadNotificationCount} />}
+          <form action={logout}>
+            <button className="text-sm text-white/80 hover:text-white">Sign out</button>
+          </form>
+        </div>
       </header>
       <main className="flex-1 bg-gray-50 p-6">{children}</main>
     </div>

@@ -373,12 +373,15 @@ Do not use bullet points. Write in paragraph form.`;
   });
 
   if (position.user_id) {
+    const { data: positionUser } = await supabase.from("users").select("email").eq("id", position.user_id).maybeSingle();
+
     await createNotification(supabase, {
       tenantId,
       userId: position.user_id,
       type: "weekly_advisory_ready",
       message: "Your weekly performance advisory is ready.",
       link: "/dashboard",
+      email: positionUser?.email ? { to: positionUser.email, subject: "Your weekly performance advisory is ready" } : null,
     });
   }
 

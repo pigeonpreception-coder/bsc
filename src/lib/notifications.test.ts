@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { createNotification } from "./notifications";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+const { sendNotificationEmailMock } = vi.hoisted(() => ({ sendNotificationEmailMock: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("./email", () => ({ sendNotificationEmail: sendNotificationEmailMock }));
+
+const { createNotification } = await import("./notifications");
 
 function fakeClient() {
   const insert = vi.fn().mockResolvedValue({ data: null, error: null });
@@ -41,5 +45,40 @@ describe("createNotification", () => {
     });
 
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ link: "/dashboard" }));
+  });
+
+  it("does not attempt to send an email when the email param is omitted", async () => {
+    const { client } = fakeClient();
+    sendNotificationEmailMock.mockClear();
+
+    await createNotification(client, {
+      tenantId: "tenant-1",
+      userId: "user-1",
+      type: "position_assigned",
+      message: "You've been assigned to Finance.",
+    });
+
+    expect(sendNotificationEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("sends an email with the notification's message and link when the email param is provided", async () => {
+    const { client } = fakeClient();
+    sendNotificationEmailMock.mockClear();
+
+    await createNotification(client, {
+      tenantId: "tenant-1",
+      userId: "user-1",
+      type: "weekly_advisory_ready",
+      message: "Your weekly performance advisory is ready.",
+      link: "/dashboard",
+      email: { to: "user@example.com", subject: "Your weekly advisory" },
+    });
+
+    expect(sendNotificationEmailMock).toHaveBeenCalledWith(
+      "user@example.com",
+      "Your weekly advisory",
+      "Your weekly performance advisory is ready.",
+      "/dashboard",
+    );
   });
 });

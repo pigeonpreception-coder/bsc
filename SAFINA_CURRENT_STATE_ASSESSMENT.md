@@ -1,6 +1,6 @@
 # Safina BSC Platform — Current-State Assessment, Gap Analysis & Target Architecture
 
-**Baseline document, updated 2026-08-12 (third revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised three times the same day to reflect 18 commits made against its own findings (15 fixes plus these 3 revisions) (see §13 for the full list). Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
+**Baseline document, updated 2026-08-12 (fourth revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised four times the same day to reflect 20 commits made against its own findings (16 fixes plus these 4 revisions) (see §13 for the full list). Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
 
 ---
 
@@ -10,11 +10,13 @@ Safina is a **working, single-region, multi-tenant SaaS application** for Balanc
 
 **What it solves today:** a small-to-mid-size organization can go from "we have no formal strategic plan" to a generated, editable, cascaded Balanced Scorecard with live KPI tracking and a board-ready exported document — without needing a consultant to build the template by hand. That core loop is real and functionally complete.
 
-**What's changed since the original baseline:** an automated test suite (67 tests) and a CI pipeline now exist; the "admin types your password" invite anti-pattern is gone, replaced with a real email-invite flow; login has rate limiting; the tenant-isolation gap in the corporate-BSC data helper is closed; audit logging now covers team invites, org-hierarchy saves, and document exports in addition to scorecard edits and tenant/license admin actions; cascade weighting is configurable via a settings screen instead of a silent hardcoded default; the duplicated `department` field across `org_positions` and `users` is consolidated to one source of truth; the unguarded org-hierarchy recursion that risked crashing the nightly performance-recalc job on corrupted data is fixed; the duplicated invite/account-creation logic is consolidated into one helper; the Super Admin tenant list is paginated instead of silently capped by PostgREST's default row limit; all three cron jobs process tenants with bounded concurrency instead of a fully serial loop; Sentry error monitoring is wired into the server, edge, and client runtimes plus a root-level error boundary; and an in-app notification system now exists — a header bell visible on every dashboard page, distinct from the older page-scoped KPI alerts panel.
+**What's changed since the original baseline:** an automated test suite (72 tests) and a CI pipeline now exist; the "admin types your password" invite anti-pattern is gone, replaced with a real email-invite flow; login has rate limiting; the tenant-isolation gap in the corporate-BSC data helper is closed; audit logging now covers team invites, org-hierarchy saves, and document exports in addition to scorecard edits and tenant/license admin actions; cascade weighting is configurable via a settings screen instead of a silent hardcoded default; the duplicated `department` field across `org_positions` and `users` is consolidated to one source of truth; the unguarded org-hierarchy recursion that risked crashing the nightly performance-recalc job on corrupted data is fixed; the duplicated invite/account-creation logic is consolidated into one helper; the Super Admin tenant list is paginated instead of silently capped by PostgREST's default row limit; all three cron jobs process tenants with bounded concurrency instead of a fully serial loop; Sentry error monitoring is wired into the server, edge, and client runtimes plus a root-level error boundary; an in-app notification system now exists — a header bell visible on every dashboard page, distinct from the older page-scoped KPI alerts panel; and notifications can now also send an email via Resend, gated on `RESEND_API_KEY` the same way Sentry is gated on its DSN.
 
-**One caveat on that last item:** the monitoring code is complete and inert-safe (it does nothing until a DSN is configured), but it requires a manual step outside this repository — creating a Sentry project and setting `NEXT_PUBLIC_SENTRY_DSN` — that could not be verified from here. Whether it is actually receiving events in production is unconfirmed. Source-map upload (needed for readable, non-minified stack traces) was also deliberately not wired up — see §3.
+**One caveat on the Sentry item:** the monitoring code is complete and inert-safe (it does nothing until a DSN is configured), but it requires a manual step outside this repository — creating a Sentry project and setting `NEXT_PUBLIC_SENTRY_DSN` — that could not be verified from here. Whether it is actually receiving events in production is unconfirmed. Source-map upload (needed for readable, non-minified stack traces) was also deliberately not wired up — see §3.
 
-**What still prevents it from being a production-grade enterprise platform:** no MFA, no email notifications (in-app notifications now exist, see below), no user self-service (signup, profile editing), and no billing integration behind the "license" concept. These remain real gaps — none of the fixes above touched them.
+**The same caveat applies to email notifications:** the code path is complete and inert-safe (no-ops until `RESEND_API_KEY` is set), but whether the account/API key is actually configured in production, and whether real emails are landing (not caught by spam filters, domain verified, etc.), is unverified from here.
+
+**What still prevents it from being a production-grade enterprise platform:** no MFA, no user self-service (signup, profile editing), and no billing integration behind the "license" concept. These remain real gaps — none of the fixes above touched them.
 
 **What prevents it from being a global platform:** no i18n/locale infrastructure, no multi-currency, no data-residency controls, single shared Postgres instance with no sharding/read-replica strategy, no multi-region deployment. None of this is implemented, and none of it needs to be yet — it isn't serving customers who require it.
 
@@ -88,7 +90,8 @@ Legend: **Complete** (feature-complete for its scope) · **Functional** (works, 
 |---|---|---|
 | Manual task assignment (person→person) | **Missing** | Only insertion path into `daily_tasks` is the AI generator (unchanged) |
 | In-app notifications (bell/notification center) | **Fixed — Functional.** | New `notifications` table + header bell (`NotificationBell.tsx`, visible on every dashboard page). Triggered on position assignment and weekly-advisory generation; distinct from the older, page-scoped `performance_alerts` panel |
-| Email/SMS notifications | **Missing** | No mail/SMS package in `package.json` (unchanged) |
+| Email notifications | **Fixed — Functional (unverified operational status).** | `src/lib/email.ts` sends via Resend, gated on `RESEND_API_KEY`; wired into the same two trigger points as in-app notifications. Whether the API key is actually configured in production is unverified from here |
+| SMS notifications | **Missing** | No SMS package in `package.json` (unchanged) |
 | Reminders / SLA management / escalation | **Missing** | Zero matches for these concepts anywhere in `src/` (unchanged) |
 | General approval workflow | **Single instance only** | `approveStrategicPlan()` — one status flip, the only approval action in the entire app (unchanged) |
 | Document generation (Word + PDF) | Complete | `docx` package + Puppeteer/`@sparticuz/chromium`; stored in Supabase Storage, signed URLs (1hr TTL), keeps last 3 versions |
@@ -116,9 +119,9 @@ Legend: **Complete** (feature-complete for its scope) · **Functional** (works, 
 
 **Infrastructure:** Vercel deployment, 3 scheduled cron jobs (`daily-tasks`, `performance-recalc`, `weekly-advisory`). **Fixed** — each now processes tenants with bounded concurrency (`src/lib/concurrency.ts`, a worker-pool capped at 5 concurrent tenants) instead of a fully serial loop; positions within a tenant still process sequentially by design, to keep total concurrent AI-API calls predictable. No region pinning, no CDN configuration beyond Vercel defaults, no containers/Kubernetes. `maxDuration` is still not set on the cron routes — the achievable value depends on the Vercel plan tier, which couldn't be determined from the repository.
 
-**DevOps:** **Fixed** — a CI pipeline now exists (`.github/workflows/ci.yml`: typecheck + lint + tests on every PR and push to `main`), and an automated test suite exists (Vitest, 67 tests across 9 files covering the scoring/cascade engine, tenant isolation, cron auth, rate limiting, the shared invite helper, and the notification helper). True RLS/Postgres integration testing remains out of scope — no Supabase CLI/Docker access in this environment to run a local Postgres instance against the real policies; what exists tests the application-layer logic that supplements RLS. Secrets via `process.env`, no secrets manager beyond Vercel's own env-var store.
+**DevOps:** **Fixed** — a CI pipeline now exists (`.github/workflows/ci.yml`: typecheck + lint + tests on every PR and push to `main`), and an automated test suite exists (Vitest, 72 tests across 10 files covering the scoring/cascade engine, tenant isolation, cron auth, rate limiting, the shared invite helper, and the notification/email helpers). True RLS/Postgres integration testing remains out of scope — no Supabase CLI/Docker access in this environment to run a local Postgres instance against the real policies; what exists tests the application-layer logic that supplements RLS. Secrets via `process.env`, no secrets manager beyond Vercel's own env-var store.
 
-**Integrations:** Anthropic (AI), Supabase (DB/Auth/Storage). **Fixed** — Sentry (`@sentry/nextjs`) is now wired for error monitoring: server/edge init and the `onRequestError` hook in `src/instrumentation.ts`, client init in `src/instrumentation-client.ts`, plus a root-level `global-error.tsx` boundary. Gated on `NEXT_PUBLIC_SENTRY_DSN` and inert without it — **whether it's actually configured and receiving events in production is unverified from this repository**. Source-map upload (`withSentryConfig` in `next.config.ts`, needed for readable production stack traces) was deliberately not added — it requires `SENTRY_AUTH_TOKEN` plus org/project config, and this environment's own `next build` already fails on an unrelated Windows path-length issue in the nested worktree directory, so a build-plugin change couldn't be verified safe against the Turbopack build. Still no payment/billing provider, no email/SMS provider, no CRM/ERP/accounting integration, no identity provider (no SSO/SAML/OIDC beyond Supabase's own auth).
+**Integrations:** Anthropic (AI), Supabase (DB/Auth/Storage). **Fixed** — Sentry (`@sentry/nextjs`) is now wired for error monitoring: server/edge init and the `onRequestError` hook in `src/instrumentation.ts`, client init in `src/instrumentation-client.ts`, plus a root-level `global-error.tsx` boundary. Gated on `NEXT_PUBLIC_SENTRY_DSN` and inert without it — **whether it's actually configured and receiving events in production is unverified from this repository**. Source-map upload (`withSentryConfig` in `next.config.ts`, needed for readable production stack traces) was deliberately not added — it requires `SENTRY_AUTH_TOKEN` plus org/project config, and this environment's own `next build` already fails on an unrelated Windows path-length issue in the nested worktree directory, so a build-plugin change couldn't be verified safe against the Turbopack build. **Fixed** — Resend (`resend` package) is now wired for transactional email (`src/lib/email.ts`), gated on `RESEND_API_KEY` and inert without it, same operational-verification caveat as Sentry. Still no payment/billing provider, no SMS provider, no CRM/ERP/accounting integration, no identity provider (no SSO/SAML/OIDC beyond Supabase's own auth).
 
 ---
 
@@ -182,7 +185,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 
 | Domain | Score (was) | Basis for the change |
 |---|---:|---|
-| Functional Completeness | 61 (58) | In-app notification system now real (header bell, two live trigger points) on top of the invite flow and department consistency work |
+| Functional Completeness | 63 (61) | Notifications now reach users by email as well as in-app, on the same two live trigger points |
 | Architecture | 55 (50) | Cron concurrency, consolidated invite logic |
 | Security | 55 (45) | Rate limiting, extended audit logging, tenant-isolation fix, baseline headers — still missing MFA, centralized authz, SAST/DAST |
 | Privacy | 25 (25) | No change |
@@ -195,21 +198,21 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | Compliance | 10 (10) | No change |
 | Globalization | 5 (5) | No change |
 | AI Readiness | 60 (60) | No change |
-| Enterprise Readiness | 34 (32) | In-app notifications close one of the four items named in §1 as blocking production-grade enterprise readiness — still no SSO/MFA/billing/SLA, and email notifications remain unbuilt |
+| Enterprise Readiness | 36 (34) | Notifications now reach users outside the app (email), not just in it — still no SSO/MFA/billing/SLA |
 
-**Overall maturity score: ~44/100, up from ~35/100 at the original baseline (~43 after the second revision).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
+**Overall maturity score: ~45/100, up from ~35/100 at the original baseline (~44 after the third revision).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
 
 ---
 
 ## 9. Pending Decisions
 
-Three of the six original items are resolved; the rest remain open.
+Four of the six original items are resolved; the rest remain open.
 
 | Functionality | Status | Recommended default (if still open) |
 |---|---|---|
 | User invitation flow | **Resolved** — implemented the recommended default (Supabase email-invite, admin never sets a password) | — |
 | `cascade_weights` configurability | **Resolved** — implemented the recommended default (settings screen at `/dashboard/settings`) | — |
-| Notification channel | **Partially resolved** — in-app implemented (header bell, `notifications` table); email still not wired up | Add email once a provider is chosen for other reasons |
+| Notification channel | **Resolved** — both in-app (header bell, `notifications` table) and email (Resend, gated on `RESEND_API_KEY`) are implemented | — |
 | Billing/subscription model | **Still open** | Flat per-tenant subscription via Stripe Billing — simplest, matches the current tenant-level license model |
 | Formal performance review workflow | **Still open** | Leave as auto-computed unless a specific customer/compliance need requires manager sign-off |
 | Data residency requirements | **Still open, deliberately deferred** | Don't build speculative infrastructure until an actual deployment requires it |
@@ -220,9 +223,9 @@ Three of the six original items are resolved; the rest remain open.
 
 **Retain:** Next.js Server Actions model, Supabase Postgres + RLS-based tenant isolation, the AI tool-calling pattern for structured generation, the document-generation pipeline (docx/Puppeteer). These are sound choices for the current product, not technical debt.
 
-**Completed this session, no longer open:** organization/department modeling, user invitation flow, automated test suite, CI/CD gate, pagination on the actually-unbounded read, rate limiting on `/login`, cascade-weight configurability, the duplicated invite logic, the unguarded hierarchy recursion, error monitoring (code-complete — see the verification caveat in §1 and §3), and an in-app notification system (header bell, two live trigger points: position assignment and weekly-advisory generation).
+**Completed this session, no longer open:** organization/department modeling, user invitation flow, automated test suite, CI/CD gate, pagination on the actually-unbounded read, rate limiting on `/login`, cascade-weight configurability, the duplicated invite logic, the unguarded hierarchy recursion, error monitoring (code-complete — see the verification caveat in §1 and §3), and a notification system covering both in-app (header bell) and email (Resend) channels, both code-complete on the same two live trigger points: position assignment and weekly-advisory generation.
 
-**Still to add:** email notifications (in-app channel now exists; email requires picking a provider — see §9); source-map upload for readable production stack traces (needs `SENTRY_AUTH_TOKEN`, deliberately deferred — see §3); a real job queue if/when tenant count outgrows bounded concurrency.
+**Still to add:** source-map upload for readable production stack traces (needs `SENTRY_AUTH_TOKEN`, deliberately deferred — see §3); a real job queue if/when tenant count outgrows bounded concurrency; more notification trigger points as concrete needs arise (e.g. team invites, plan approval).
 
 **Defer until an actual need exists:** multi-region deployment, data residency controls, i18n/localization, formal ISO/SOC2 program, microservices decomposition, SAST/DAST scanning (valuable, but proportionate to add once there's a security review process to act on its findings, not before).
 
@@ -236,7 +239,7 @@ Three of the six original items are resolved; the rest remain open.
 
 **P2 — High:** ~~unguarded hierarchy recursion~~ done · ~~consolidate duplicated account-creation logic~~ done · ~~pagination~~ done (for the table that actually needed it) · ~~bound cron concurrency~~ done · ~~`cascade_weights` settings UI~~ done.
 
-**P3 — Medium:** decide on and implement `user_permissions` (or remove it); ~~notification system (in-app first)~~ done; formal risk register and incident-response plan.
+**P3 — Medium:** decide on and implement `user_permissions` (or remove it); ~~notification system (in-app + email)~~ done; formal risk register and incident-response plan.
 
 **P4 — Future:** billing integration; i18n/localization; data residency; multi-region deployment; formal compliance program (only once a specific customer or legal requirement names it).
 
@@ -244,13 +247,14 @@ Three of the six original items are resolved; the rest remain open.
 
 ## 12. Next Development Instructions Required From the Client
 
-Everything from the original list is done, error monitoring is code-complete, and the in-app notification system is built. In priority order, what's actually left:
+Everything from the original list is done, error monitoring is code-complete, and the notification system (in-app + email) is built. In priority order, what's actually left:
 
 1. **"Verify Sentry is actually receiving events, then add source-map upload."** — not a development task so much as a verification one: create the Sentry project, set `NEXT_PUBLIC_SENTRY_DSN`, hit `/api/sentry-check` once to confirm an event lands, then decide whether to wire up `withSentryConfig` (needs `SENTRY_AUTH_TOKEN`) for readable production stack traces.
-2. **"Decide on `user_permissions`: implement fine-grained resource-level ACLs, or drop the unused table."** — currently misleading dead schema; either direction is fine, leaving it half-present isn't.
-3. **"Add a real job queue for the cron routes"** — only once tenant/position counts actually approach what bounded concurrency can't handle; don't build this speculatively.
-4. **"Decide on a billing provider and wire it behind the existing `license_tier`/`license_status` fields."** — needed before any real commercial launch, but is a business decision, not something to build ahead of that decision.
-5. **"Add more notification trigger points, and/or an email channel."** — the notification system currently fires on two events (position assignment, weekly-advisory generation); extending it to more events (e.g. team invites, plan approval) is additive whenever there's a concrete need, and email requires picking a provider first (see §9).
+2. **"Verify Resend is actually sending, and that emails land (not spam)."** — same category as the Sentry item: create the Resend project, set `RESEND_API_KEY`, and once volume justifies it, verify a sending domain (`NOTIFICATION_EMAIL_FROM`) instead of the shared `resend.dev` testing address.
+3. **"Decide on `user_permissions`: implement fine-grained resource-level ACLs, or drop the unused table."** — currently misleading dead schema; either direction is fine, leaving it half-present isn't.
+4. **"Add a real job queue for the cron routes"** — only once tenant/position counts actually approach what bounded concurrency can't handle; don't build this speculatively.
+5. **"Decide on a billing provider and wire it behind the existing `license_tier`/`license_status` fields."** — needed before any real commercial launch, but is a business decision, not something to build ahead of that decision.
+6. **"Add more notification trigger points."** — the notification system currently fires on two events (position assignment, weekly-advisory generation); extending it to more (e.g. team invites, plan approval) is additive whenever there's a concrete need.
 
 Items intentionally **not** included: multi-region infrastructure, formal compliance certification, i18n, SAST/DAST scanning — each requires a business decision or an actual customer/regulatory trigger before it's worth building.
 
@@ -277,4 +281,6 @@ Fixes made against this document's own findings, in the order they were built (a
 15. Added Sentry-based error monitoring (server, edge, client, root error boundary) — code-complete, pending the user's one-time Sentry project setup
 16. Second revision of this document — reflected fix 15
 17. Added an in-app notification system: `notifications` table, `createNotification()` helper, header bell (`NotificationBell.tsx`, visible app-wide), wired into position assignment and weekly-advisory generation
-18. This update — third revision, reflecting fix 17
+18. Third revision of this document — reflected fix 17
+19. Added email notifications: `src/lib/email.ts` (Resend, gated on `RESEND_API_KEY`), extended `createNotification()` with an optional `email` param, wired into the same two trigger points as the in-app channel
+20. This update — fourth revision, reflecting fix 19

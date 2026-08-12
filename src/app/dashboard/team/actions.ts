@@ -134,12 +134,16 @@ export async function assignPosition(formData: FormData) {
       await admin.from("users").update({ department }).eq("id", targetUserId).eq("tenant_id", user.tenant_id);
     }
 
+    const message = department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.";
+    const { data: targetUser } = await admin.from("users").select("email").eq("id", targetUserId).maybeSingle();
+
     await createNotification(admin, {
       tenantId: user.tenant_id,
       userId: targetUserId,
       type: "position_assigned",
-      message: department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.",
+      message,
       link: "/dashboard",
+      email: targetUser?.email ? { to: targetUser.email, subject: "You've been assigned a new position" } : null,
     });
   }
 

@@ -67,6 +67,16 @@ export async function downloadStrategicPlan(planId: string) {
   await pruneOldVersions(admin, planId, "docx");
   await pruneOldVersions(admin, planId, "pdf");
 
+  await admin.from("audit_log").insert({
+    tenant_id: plan.tenant_id,
+    user_id: user.id,
+    action: "export_plan_document",
+    resource_type: "strategic_plan",
+    resource_id: planId,
+    old_value: null,
+    new_value: { docx_path: docxPath, pdf_path: pdfPath },
+  });
+
   const [docxSigned, pdfSigned] = await Promise.all([
     admin.storage.from("company-documents").createSignedUrl(docxPath, SIGNED_URL_TTL_SECONDS),
     admin.storage.from("company-documents").createSignedUrl(pdfPath, SIGNED_URL_TTL_SECONDS),

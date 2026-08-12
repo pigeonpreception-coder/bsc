@@ -53,6 +53,16 @@ export async function addTeamMember(formData: FormData) {
     throw profileError;
   }
 
+  await admin.from("audit_log").insert({
+    tenant_id: user.tenant_id,
+    user_id: user.id,
+    action: "invite_team_member",
+    resource_type: "user",
+    resource_id: authUser.user.id,
+    old_value: null,
+    new_value: { email, full_name: fullName || null, role, department },
+  });
+
   if (positionId) {
     const { data: linked, error: linkError } = await admin
       .from("org_positions")

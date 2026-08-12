@@ -95,6 +95,18 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
   // succeeds for every position (see generateCascadedBSCs below) — saving
   // the hierarchy tree is a necessary first step, not completion itself.
 
+  await supabase.from("audit_log").insert({
+    tenant_id: tenantId,
+    user_id: user.id,
+    action: "save_org_hierarchy",
+    resource_type: "tenant",
+    resource_id: tenantId,
+    old_value: null,
+    // The tree itself isn't logged (would be a large, mostly-noise blob on
+    // every re-save) — position count is enough to spot an unexpected wipe.
+    new_value: { position_count: sortCounter },
+  });
+
   revalidatePath("/dashboard/onboarding");
   revalidatePath("/dashboard");
 }

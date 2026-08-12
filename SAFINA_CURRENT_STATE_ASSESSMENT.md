@@ -1,6 +1,6 @@
 # Safina BSC Platform — Current-State Assessment, Gap Analysis & Target Architecture
 
-**Baseline document, updated 2026-08-12 (sixth revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised six times the same day to reflect 24 commits made against its own findings (18 fixes plus these 6 revisions) (see §13 for the full list). Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
+**Baseline document, updated 2026-08-12 (seventh revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised seven times the same day to reflect 25 commits made against its own findings (19 fixes plus these 7 revisions) (see §13 for the full list). Fixes 1–18 came from this document's own original gap analysis; fix 19 came from a **second, fresh gap-scan pass** run after the original punch list was exhausted (see §14) — a reminder that "everything in the original list is done" is not the same claim as "there are no more issues," and this document should get a fresh scan again once the current punch list is exhausted a second time. Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
 
 ---
 
@@ -10,7 +10,7 @@ Safina is a **working, single-region, multi-tenant SaaS application** for Balanc
 
 **What it solves today:** a small-to-mid-size organization can go from "we have no formal strategic plan" to a generated, editable, cascaded Balanced Scorecard with live KPI tracking and a board-ready exported document — without needing a consultant to build the template by hand. That core loop is real and functionally complete.
 
-**What's changed since the original baseline:** an automated test suite (73 tests) and a CI pipeline now exist; the "admin types your password" invite anti-pattern is gone, replaced with a real email-invite flow; login has rate limiting; the tenant-isolation gap in the corporate-BSC data helper is closed; audit logging now covers team invites, org-hierarchy saves, and document exports in addition to scorecard edits and tenant/license admin actions; cascade weighting is configurable via a settings screen instead of a silent hardcoded default; the duplicated `department` field across `org_positions` and `users` is consolidated to one source of truth; the unguarded org-hierarchy recursion that risked crashing the nightly performance-recalc job on corrupted data is fixed; the duplicated invite/account-creation logic is consolidated into one helper; the Super Admin tenant list is paginated instead of silently capped by PostgREST's default row limit; all three cron jobs process tenants with bounded concurrency instead of a fully serial loop; Sentry error monitoring is wired into the server, edge, and client runtimes plus a root-level error boundary; a notification system (header bell + email via Resend) now exists, distinct from the older page-scoped KPI alerts panel, and covers four events: position assignment, weekly-advisory generation, new-account welcome, and strategic-plan approval.
+**What's changed since the original baseline:** a fresh gap-scan pass found and closed two cross-tenant write gaps RLS alone didn't catch (see §14); an automated test suite (73 tests) and a CI pipeline now exist; the "admin types your password" invite anti-pattern is gone, replaced with a real email-invite flow; login has rate limiting; the tenant-isolation gap in the corporate-BSC data helper is closed; audit logging now covers team invites, org-hierarchy saves, and document exports in addition to scorecard edits and tenant/license admin actions; cascade weighting is configurable via a settings screen instead of a silent hardcoded default; the duplicated `department` field across `org_positions` and `users` is consolidated to one source of truth; the unguarded org-hierarchy recursion that risked crashing the nightly performance-recalc job on corrupted data is fixed; the duplicated invite/account-creation logic is consolidated into one helper; the Super Admin tenant list is paginated instead of silently capped by PostgREST's default row limit; all three cron jobs process tenants with bounded concurrency instead of a fully serial loop; Sentry error monitoring is wired into the server, edge, and client runtimes plus a root-level error boundary; a notification system (header bell + email via Resend) now exists, distinct from the older page-scoped KPI alerts panel, and covers four events: position assignment, weekly-advisory generation, new-account welcome, and strategic-plan approval.
 
 **One caveat on the Sentry item:** the monitoring code is complete and inert-safe (it does nothing until a DSN is configured), but it requires a manual step outside this repository — creating a Sentry project and setting `NEXT_PUBLIC_SENTRY_DSN` — that could not be verified from here. Whether it is actually receiving events in production is unconfirmed. Source-map upload (needed for readable, non-minified stack traces) was also deliberately not wired up — see §3.
 
@@ -139,7 +139,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 
 | Control | Status |
 |---|---|
-| Tenant isolation (RLS) | **Implemented**, consistent across schema; the one gap found (`getCorporateBscView` trusting caller pre-scoping) is fixed |
+| Tenant isolation (RLS) | **Implemented**, consistent across schema. Three gaps found across two scan passes, all fixed: `getCorporateBscView` trusting caller pre-scoping (pass 1); `addScorecardColumn`/`updateCellValue` and `assignPosition` trusting a caller-supplied foreign-key ID without verifying it belongs to the caller's tenant — RLS's insert check alone doesn't catch this class of gap (pass 2, see §14) |
 | Secrets hygiene | **Implemented** — no hardcoded secrets, service-role key `server-only` |
 | Audit logging | **Fixed — now broadly implemented.** Scorecard edits, tenant/license admin actions, team invites, org-hierarchy saves, document exports, and cascade-weight changes are all logged. Still not logged: individual task status changes, login/logout events |
 | Rate limiting (login) | **Fixed — Implemented.** Postgres-backed (no Redis/KV available in this deployment), 5/15min per email + 20/15min per IP. Other Server Actions still have no rate limiting |
@@ -161,10 +161,17 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | `department` duplicated as unlinked free text (and a *third* copy found: the questionnaire-sourced dropdown) | **Fixed** — `org_positions` is now the single source of truth, synced at both mutation points | Was P2 |
 | No pagination on unbounded reads | **Fixed for the actual unbounded read** (Super Admin tenant list). The originally-named tables (`audit_log`, `performance_history`, `daily_tasks`) turned out on inspection to already be bounded by date filters/`.limit()`/being write-only — the original framing named the wrong tables | Was P2 |
 | Cron jobs looped every tenant serially | **Improved, not eliminated** — bounded concurrency (5 at a time) via `mapWithConcurrency()`. A real fix still requires a job queue, deliberately not built without an actual scale signal | Was P2, now lower urgency |
-| No automated tests | **Fixed** — 65 tests across 8 files, covering the scoring/cascade engine, tenant isolation, cron auth, rate limiting, invite rollback, and concurrency helper | Was P1 |
+| No automated tests | **Fixed** — 73 tests across 10 files, covering the scoring/cascade engine, tenant isolation, cron auth, rate limiting, invite rollback, notifications, email, and the concurrency helper | Was P1 |
 | No CI/CD | **Fixed** — `.github/workflows/ci.yml` runs typecheck + lint + test on every PR and push to `main` | Was P1 |
 | `user_permissions` table exists with RLS but is never used | **Fixed** — dropped (migration `0019_drop_user_permissions.sql`), per the user's decision that nothing needs per-resource ACLs beyond existing role-based access | Was P3 |
+| `addScorecardColumn`/`updateCellValue`/`assignPosition` trusted caller-supplied foreign-key IDs without a tenant check | **Fixed** — see §5 and §14 | Was P1 |
 | `overdue_task` alert type allowed by schema/UI, never produced | **Not fixed** — dead code path, low impact | P4 |
+| All 13 `audit_log` insert call sites discard the result with no error check | **Not fixed** — found in the §14 gap scan; audit logging is supplementary, not the primary access-control mechanism, so this doesn't block anything, it just risks a quietly-incomplete audit trail | P3 |
+| N+1 dedup-check-then-insert loops inside `generatePerformanceAlerts` and `rolloverUnfinishedTasks` (within a single tenant's cron processing) | **Not fixed** — found in the §14 gap scan; only matters at a scale not currently evidenced | P3 |
+| `saveOrgHierarchy` inserts one `org_positions` row at a time, recursively, in the request path | **Not fixed** — found in the §14 gap scan; felt as onboarding latency for large org charts, but onboarding is a one-time step | P3 |
+| `updateScorecardRow`'s `responsible_person` has no tenant/existence check | **Not fixed** — found in the §14 gap scan; a data-integrity risk, not an access-control bypass | P3 |
+| `approveStrategicPlan` notifies every tenant member in a serial per-user loop (DB insert + blocking email call each) | **Not fixed** — found in the §14 gap scan; self-inflicted by this session's own plan-approval notification work, risks a function-timeout for a large tenant | P3 |
+| `computePeriodEnd` (pure date-math) has zero test coverage | **Not fixed** — found in the §14 gap scan; cheapest of the six remaining findings to close | P4 |
 
 ---
 
@@ -187,7 +194,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 |---|---:|---|
 | Functional Completeness | 64 (63) | Notification trigger points doubled (2 → 4): new-account welcome and plan approval added alongside position assignment and weekly-advisory generation |
 | Architecture | 55 (50) | Cron concurrency, consolidated invite logic |
-| Security | 56 (55) | Removed a misleading half-built control (`user_permissions`: RLS-protected but never enforced by app code, which could have looked like real access control on inspection) — still missing MFA, centralized authz, SAST/DAST |
+| Security | 59 (56) | Closed two real cross-tenant write gaps found in a fresh gap-scan pass (§14) — RLS's insert check alone didn't catch a caller-supplied foreign-key ID pointing at another tenant's data — plus the earlier `user_permissions` cleanup. Still missing MFA, centralized authz, SAST/DAST, and this pass surfaced that manual scans find things RLS alone doesn't — an argument for the still-missing SAST/DAST |
 | Privacy | 25 (25) | No change |
 | Scalability | 45 (30) | Both concrete ceilings found (cron serial loop, unbounded admin list) are fixed/improved — still no queue for true unbounded scale |
 | Performance | 40 (40) | No change — still no load-test evidence either way |
@@ -200,7 +207,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | AI Readiness | 60 (60) | No change |
 | Enterprise Readiness | 37 (36) | Notifications now cover onboarding and governance moments (welcome, plan approval), not just performance events — still no SSO/MFA/billing/SLA |
 
-**Overall maturity score: ~45/100, up from ~35/100 at the original baseline (~45 after the fifth revision).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
+**Overall maturity score: ~46/100, up from ~35/100 at the original baseline (~45 after the sixth revision).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
 
 ---
 
@@ -254,6 +261,15 @@ Everything from the original list is done, error monitoring is code-complete, th
 3. **"Add a real job queue for the cron routes"** — only once tenant/position counts actually approach what bounded concurrency can't handle; don't build this speculatively.
 4. **"Decide on a billing provider and wire it behind the existing `license_tier`/`license_status` fields."** — needed before any real commercial launch, but is a business decision, not something to build ahead of that decision.
 
+Unlike the four above, the six §14 gap-scan findings below don't need an external account or a business decision — they're buildable whenever there's a spare cycle, roughly in this order:
+
+5. Add an error check to the 13 `audit_log` insert call sites (at minimum, log to Sentry on failure so a broken audit trail is at least visible).
+6. Batch `approveStrategicPlan`'s per-user notification loop (e.g. `mapWithConcurrency`, matching `concurrency.ts`) before a large tenant hits a function timeout on it.
+7. Add a tenant/existence check to `updateScorecardRow`'s `responsible_person` field.
+8. Write a test for `computePeriodEnd` (cheapest of the six).
+9. Batch the N+1 dedup-check loops in `generatePerformanceAlerts`/`rolloverUnfinishedTasks` — only once evidence shows a tenant large enough for it to matter.
+10. Batch `saveOrgHierarchy`'s recursive one-row-at-a-time inserts — only once evidence shows org charts large enough for the latency to be felt.
+
 Notification trigger points now cover four events (position assignment, weekly-advisory generation, new-account welcome, plan approval). Further ones (e.g. task overdue, KPI status change surfaced through the same channel as `performance_alerts`) remain additive, whenever a concrete need shows up.
 
 Items intentionally **not** included: multi-region infrastructure, formal compliance certification, i18n, SAST/DAST scanning — each requires a business decision or an actual customer/regulatory trigger before it's worth building.
@@ -287,4 +303,32 @@ Fixes made against this document's own findings, in the order they were built (a
 21. Dropped `user_permissions` (migration `0019_drop_user_permissions.sql`) — per the user's decision that nothing needs per-resource ACLs beyond existing role-based access
 22. Fifth revision of this document — reflected fix 21
 23. Added two more notification trigger points: a welcome notification on account creation (`user-invite.ts`, in-app only — Supabase's own invite email already covers that moment) and a plan-approval notification to every other tenant member (in-app + email, `plan/[id]/actions.ts`)
-24. This update — sixth revision, reflecting fix 23
+24. Sixth revision of this document — reflected fix 23
+25. Ran a fresh gap-scan pass (§14) and fixed the two highest-impact findings: `addScorecardColumn`/`updateCellValue` (`column-actions.ts`) and `assignPosition` (`team/actions.ts`) now verify caller-supplied foreign-key IDs belong to the caller's tenant before writing, closing two cross-tenant write gaps RLS's insert-check alone didn't catch
+26. This update — seventh revision, reflecting fix 25
+
+---
+
+## 14. Fresh Gap-Scan Pass (Second Pass, Post Original Punch List)
+
+Run after every item in the original §5/§6/§9 gap list was resolved, specifically to check whether "the known list is done" quietly became "there's nothing left" — it hadn't. An agent was pointed at the codebase with this document as context (so it wouldn't re-flag anything already listed) and asked to find genuinely new issues across five categories: missing authorization checks, missing input validation, N+1 query patterns, silently-swallowed errors, and untested pure logic. It returned 8 findings; the 2 most severe are fixed (above). The other 6 are recorded here rather than acted on unilaterally, since none of them are urgent enough to justify building without a specific instruction, consistent with this document's own bias against speculative work.
+
+**Fixed:**
+
+| Finding | Fix |
+|---|---|
+| `addScorecardColumn`/`updateCellValue` never verified `scorecardId`/`rowId`/`columnId` belonged to the caller's tenant before writing. RLS's insert `with check` only validates the *new row's own* `tenant_id`, not that a caller-supplied foreign-key ID points at something in that tenant — a `company_admin` could plant a column, or upsert a cell value, against another tenant's scorecard. `scorecard_cell_values` has a *global* `unique (row_id, column_id)` constraint (not per-tenant), so a forged upsert could also permanently block the real owner's later edits to that cell. | Both actions now look up the referenced row(s) scoped to `tenant_id` first and fail closed if not found — the same pattern the sibling `deleteScorecardColumn`/`renameScorecardColumn` already used. |
+| `assignPosition` never verified `targetUserId` belonged to the caller's tenant before using it with the RLS-bypassing admin client. A `company_admin` could link a position — and its assignment email — to a user account in an entirely different tenant. | Looks up the target user scoped to `tenant_id` up front; fails closed if not found. |
+
+**Recorded, not yet fixed (no urgency signal to justify building ahead of one):**
+
+| Finding | Why it's not urgent enough to build unprompted |
+|---|---|
+| All 13 `audit_log` insert call sites discard the result with no error check — a failed audit write is invisible, with no console/Sentry signal. | Audit logging is a supplementary record, not the primary access-control mechanism (RLS is); a failure here doesn't allow anything a user shouldn't be able to do, it just risks a quieter-than-ideal audit trail. |
+| `generatePerformanceAlerts` (`performance.ts`) and `rolloverUnfinishedTasks` (`tasks.ts`) each do one dedup `SELECT COUNT` + conditional `INSERT` per row, sequentially, inside the nightly cron jobs — an N+1 pattern *within* a single tenant's processing, on top of the already-bounded across-tenant concurrency. | Only matters once a single tenant has hundreds of at-risk KPIs or rolled-over tasks in one run — no evidence that's the current scale. Same "don't build ahead of an actual scale signal" reasoning as the cron-queue item in §12. |
+| `saveOrgHierarchy` (`onboarding/actions.ts`) inserts one `org_positions` row at a time, recursively, synchronously in the request the company_admin is waiting on — an N-position org chart is N sequential round-trips felt as UI latency during onboarding. | A real UX cost, but onboarding is a one-time setup step, not a repeated hot path — worth fixing if org sizes in practice turn out large enough to notice, not before. |
+| `updateScorecardRow`'s `responsible_person` field is written with no check that the value is a real user in the tenant (unlike `positionId` lookups elsewhere, which always re-verify tenant ownership). | Data-integrity risk (a row could point at a nonexistent or wrong-tenant user, silently breaking the `isOwner` edit-access check for that row), not an access-control bypass — no path for a user to gain access to something they shouldn't have via this. |
+| `approveStrategicPlan` notifies every tenant member in a serial per-user loop, each iteration doing one DB insert plus (when email is set) one blocking Resend HTTP call — for a tenant with dozens of users, this is dozens of sequential round-trips inside a single user-facing Server Action, risking a function-timeout on the approving admin's click. | Real, and self-inflicted by this session's own plan-approval notification work (fix 25 in §13) — worth batching (e.g. `Promise.all` with a concurrency cap, matching `mapWithConcurrency` in `concurrency.ts`) the next time this action is touched, but no evidence yet of a tenant large enough to actually hit a timeout. |
+| `computePeriodEnd` (`questionnaire/actions.ts`) is a pure date-math function with zero test coverage, despite feeding `period_end` (used elsewhere for plan-duration display and AI-generation context) and running on every questionnaire draft save. | Not a bug — just an untested pure function of exactly the kind already covered elsewhere in the suite (`cascade-weights.test.ts`, `scorecard.test.ts`). Cheapest of the six to close whenever there's a spare cycle for it. |
+
+The last item on that list — `approveStrategicPlan`'s serial notification loop — is worth flagging specifically: it's a gap this session itself introduced two fixes ago, not a pre-existing one. It's a reminder that adding a notification trigger point is not a zero-cost action once a tenant has enough users, and should be kept in mind if more trigger points are added to actions that loop over all tenant members.

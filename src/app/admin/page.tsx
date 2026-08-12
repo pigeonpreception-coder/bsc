@@ -1,13 +1,31 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function AdminHomePage() {
+const PAGE_SIZE = 25;
+
+export default async function AdminHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Math.trunc(Number(pageParam)) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
   const supabase = await createClient();
 
-  const { data: tenants } = await supabase
+  // This grows with every tenant ever created platform-wide, unlike
+  // everything else in the app (which is naturally bounded by one
+  // organization's own size) — the one query that actually needed
+  // pagination rather than a date filter or a small .limit().
+  const { data: tenants, count } = await supabase
     .from("tenants")
-    .select("id, company_name, license_tier, license_status, created_at")
-    .order("created_at", { ascending: false });
+    .select("id, company_name, license_tier, license_status, created_at", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
   // One exact count per tenant rather than fetching every user row — avoids
   // silently undercounting if the users table ever exceeds the default
@@ -85,6 +103,32 @@ export default async function AdminHomePage() {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <span>
+            Page {page} of {totalPages} &middot; {count} tenant{count === 1 ? "" : "s"} total
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link
+                href={`/admin?page=${page - 1}`}
+                className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              >
+                Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={`/admin?page=${page + 1}`}
+                className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50"
+              >
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount, type UserRole } from "@/lib/user-invite";
 import { createNotification } from "@/lib/notifications";
+import { writeAuditLog } from "@/lib/audit-log";
 
 export async function addTeamMember(formData: FormData) {
   const user = await getCurrentUser();
@@ -53,7 +54,7 @@ export async function addTeamMember(formData: FormData) {
     origin,
   });
 
-  await admin.from("audit_log").insert({
+  await writeAuditLog(admin, {
     tenant_id: user.tenant_id,
     user_id: user.id,
     action: "invite_team_member",

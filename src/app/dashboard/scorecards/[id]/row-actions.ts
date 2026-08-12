@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeAutoStatus } from "@/lib/scorecard";
 import { calculatePerformanceScores } from "@/lib/performance";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -70,11 +71,26 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
     update.status = computeAutoStatus(nextActual, nextTarget, nextLowerIsBetter);
   }
 
+  // responsible_person is a user id with no enum/FK check at the DB level
+  // reachable from here (the column's own FK just requires *some* row in
+  // public.users, any tenant) — without this, an admin could point a row
+  // at a nonexistent or wrong-tenant user, silently breaking the isOwner
+  // check above for whoever it should have pointed to.
+  if (field === "responsible_person" && update.responsible_person) {
+    const { data: candidate } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", update.responsible_person)
+      .eq("tenant_id", user.tenant_id)
+      .maybeSingle();
+    if (!candidate) throw new Error("That person isn't part of this organization.");
+  }
+
   const { error } = await supabase.from("scorecard_rows").update(update).eq("id", rowId);
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
-    tenant_id: user.tenant_id,
+  await writeAuditLog(supabase, {
+    tenant_id: row.tenant_id,
     user_id: user.id,
     action: "update_row",
     resource_type: "scorecard_row",
@@ -140,7 +156,7 @@ export async function addScorecardRow(scorecardId: string) {
     .single();
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
+  await writeAuditLog(supabase, {
     tenant_id: user.tenant_id,
     user_id: user.id,
     action: "add_row",
@@ -159,8 +175,8 @@ export async function deleteScorecardRow(rowId: string) {
   const { error } = await supabase.from("scorecard_rows").delete().eq("id", rowId);
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
-    tenant_id: user.tenant_id,
+  await writeAuditLog(supabase, {
+    tenant_id: row.tenant_id,
     user_id: user.id,
     action: "delete_row",
     resource_type: "scorecard_row",

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { computePeriodEnd } from "@/lib/plan-period";
 import type { CascadingEntry } from "./CascadingList";
 import type { StatusRowEntry } from "./StatusRowList";
 import type { SupportingDocument } from "./SupportingDocumentsList";
@@ -36,13 +37,6 @@ export type BusinessProfileDraft = {
   additionalInfo: string;
 };
 
-function computePeriodEnd(financialYearStart: string, years: number): string | null {
-  if (!financialYearStart || !years) return null;
-  const start = new Date(financialYearStart + "T00:00:00Z");
-  if (Number.isNaN(start.getTime())) return null;
-  const end = new Date(Date.UTC(start.getUTCFullYear() + years, start.getUTCMonth(), start.getUTCDate() - 1));
-  return end.toISOString().slice(0, 10);
-}
 
 export async function saveBusinessProfileDraft(planId: string | null, data: BusinessProfileDraft) {
   const user = await getCurrentUser();

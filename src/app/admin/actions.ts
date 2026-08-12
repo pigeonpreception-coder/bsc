@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount } from "@/lib/user-invite";
+import { writeAuditLog } from "@/lib/audit-log";
 
 async function requireSuperAdmin() {
   const user = await getCurrentUser();
@@ -42,7 +43,7 @@ export async function createTenant(formData: FormData) {
 
   if (error) throw error;
 
-  await admin.from("audit_log").insert({
+  await writeAuditLog(admin, {
     tenant_id: tenant.id,
     user_id: currentUser.id,
     action: "create_tenant",
@@ -73,7 +74,7 @@ export async function setLicenseStatus(tenantId: string, status: "active" | "sus
 
   if (error) throw error;
 
-  await admin.from("audit_log").insert({
+  await writeAuditLog(admin, {
     tenant_id: tenantId,
     user_id: currentUser.id,
     action: "set_license_status",
@@ -109,7 +110,7 @@ export async function createCompanyAdmin(formData: FormData) {
     origin,
   });
 
-  await admin.from("audit_log").insert({
+  await writeAuditLog(admin, {
     tenant_id: tenantId,
     user_id: currentUser.id,
     action: "create_company_admin",

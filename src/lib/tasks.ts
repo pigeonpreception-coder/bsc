@@ -58,6 +58,12 @@ export async function rolloverUnfinishedTasks(
 
   if (!unfinished || unfinished.length === 0) return 0;
 
+  // task_date/rollover_count/status differ per task, so the update itself
+  // stays per-row — but the rollover_exceeded dedup-check-then-insert
+  // doesn't need to (see below): collect candidates here, resolve them in
+  // one batch after the loop instead of one SELECT COUNT + INSERT per task.
+  const candidateAlerts: { tenant_id: string; position_id: string | null; alert_type: string; alert_message: string }[] = [];
+
   for (const task of unfinished) {
     const newRollover = (task.rollover_count ?? 0) + 1;
     await supabase
@@ -69,24 +75,32 @@ export async function rolloverUnfinishedTasks(
       })
       .eq("id", task.id);
 
-    // Alert if rolled over >= 3 times
     if (newRollover >= 3) {
-      const { count } = await supabase
-        .from("performance_alerts")
-        .select("id", { count: "exact", head: true })
-        .eq("tenant_id", tenantId)
-        .eq("alert_type", "rollover_exceeded")
-        .eq("alert_message", `Task "${task.task_title}" has been incomplete for ${newRollover} days`)
-        .eq("is_read", false);
+      candidateAlerts.push({
+        tenant_id: tenantId,
+        position_id: task.position_id,
+        alert_type: "rollover_exceeded",
+        alert_message: `Task "${task.task_title}" has been incomplete for ${newRollover} days`,
+      });
+    }
+  }
 
-      if (!count || count === 0) {
-        await supabase.from("performance_alerts").insert({
-          tenant_id: tenantId,
-          position_id: task.position_id,
-          alert_type: "rollover_exceeded",
-          alert_message: `Task "${task.task_title}" has been incomplete for ${newRollover} days`,
-        });
-      }
+  if (candidateAlerts.length > 0) {
+    const { data: existingAlerts } = await supabase
+      .from("performance_alerts")
+      .select("alert_message")
+      .eq("tenant_id", tenantId)
+      .eq("alert_type", "rollover_exceeded")
+      .eq("is_read", false)
+      .in(
+        "alert_message",
+        candidateAlerts.map((a) => a.alert_message),
+      );
+
+    const existingMessages = new Set((existingAlerts ?? []).map((a) => a.alert_message));
+    const newAlerts = candidateAlerts.filter((a) => !existingMessages.has(a.alert_message));
+    if (newAlerts.length > 0) {
+      await supabase.from("performance_alerts").insert(newAlerts);
     }
   }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CASCADE_TIERS, parseOwnWeightPercent } from "@/lib/cascade-weights";
+import { writeAuditLog } from "@/lib/audit-log";
 
 export async function updateCascadeWeights(formData: FormData) {
   const user = await getCurrentUser();
@@ -29,7 +30,7 @@ export async function updateCascadeWeights(formData: FormData) {
   const { error } = await supabase.from("cascade_weights").upsert(nextRow, { onConflict: "tenant_id" });
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
+  await writeAuditLog(supabase, {
     tenant_id: user.tenant_id,
     user_id: user.id,
     action: "update_cascade_weights",

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildPlanDocumentModel } from "@/lib/plan-document-model";
 import { renderPlanDocx } from "@/lib/plan-document-docx";
 import { renderPlanPdf } from "@/lib/plan-document-pdf";
+import { writeAuditLog } from "@/lib/audit-log";
 
 // Keep only the 3 most recent generated files per format, per plan.
 const MAX_VERSIONS_PER_TYPE = 3;
@@ -67,7 +68,7 @@ export async function downloadStrategicPlan(planId: string) {
   await pruneOldVersions(admin, planId, "docx");
   await pruneOldVersions(admin, planId, "pdf");
 
-  await admin.from("audit_log").insert({
+  await writeAuditLog(admin, {
     tenant_id: plan.tenant_id,
     user_id: user.id,
     action: "export_plan_document",

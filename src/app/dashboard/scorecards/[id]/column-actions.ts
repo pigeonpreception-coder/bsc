@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { FIXED_COLUMN_ORDER } from "@/lib/scorecard";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const FIXED_ORDERS = Object.values(FIXED_COLUMN_ORDER).sort((a, b) => a - b);
 
@@ -72,7 +73,7 @@ export async function addScorecardColumn(scorecardId: string, insertBeforeOrder?
     .single();
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
+  await writeAuditLog(supabase, {
     tenant_id: user.tenant_id,
     user_id: user.id,
     action: "add_column",
@@ -111,8 +112,8 @@ export async function deleteScorecardColumn(columnId: string) {
     .eq("id", columnId);
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
-    tenant_id: user.tenant_id,
+  await writeAuditLog(supabase, {
+    tenant_id: col.tenant_id,
     user_id: user.id,
     action: "delete_column",
     resource_type: "scorecard_column",
@@ -147,8 +148,8 @@ export async function renameScorecardColumn(
     .eq("id", columnId);
   if (error) throw error;
 
-  await supabase.from("audit_log").insert({
-    tenant_id: user.tenant_id,
+  await writeAuditLog(supabase, {
+    tenant_id: col.tenant_id,
     user_id: user.id,
     action: "rename_column",
     resource_type: "scorecard_column",

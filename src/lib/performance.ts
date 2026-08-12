@@ -385,18 +385,24 @@ export async function generatePerformanceAlerts(supabase: SupabaseClient, tenant
     is_read: false,
   }));
 
-  // Only insert alerts that don't already exist (avoid duplicates)
-  for (const alert of alerts) {
-    const { count } = await supabase
-      .from("performance_alerts")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("scorecard_row_id", alert.scorecard_row_id)
-      .eq("alert_type", alert.alert_type)
-      .eq("is_read", false);
+  // One dedup query covering every candidate row instead of a SELECT COUNT
+  // per row, then one bulk insert instead of one INSERT per row — this used
+  // to be up to 2 round trips per at-risk/off-track KPI, sequentially,
+  // inside the nightly cron job.
+  const { data: existingAlerts } = await supabase
+    .from("performance_alerts")
+    .select("scorecard_row_id, alert_type")
+    .eq("tenant_id", tenantId)
+    .eq("is_read", false)
+    .in(
+      "scorecard_row_id",
+      rows.map((r) => r.id),
+    );
 
-    if (!count || count === 0) {
-      await supabase.from("performance_alerts").insert(alert);
-    }
+  const existingKeys = new Set((existingAlerts ?? []).map((a) => `${a.scorecard_row_id}:${a.alert_type}`));
+  const newAlerts = alerts.filter((a) => !existingKeys.has(`${a.scorecard_row_id}:${a.alert_type}`));
+
+  if (newAlerts.length > 0) {
+    await supabase.from("performance_alerts").insert(newAlerts);
   }
 }

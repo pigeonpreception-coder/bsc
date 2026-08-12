@@ -1,9 +1,11 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
+import { writeAuditLog } from "@/lib/audit-log";
 
 // ─── Types matching the client hierarchy ─────────────────────
 
@@ -38,11 +40,18 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
   // Clear existing positions for this tenant (idempotent re-save)
   await supabase.from("org_positions").delete().eq("tenant_id", tenantId);
 
+  // sort_order follows the same pre-order traversal (parent, then each
+  // child's whole subtree in listed order) this always used — assigned in
+  // its own pass so it stays independent of how insertion is batched below.
+  const sortOrderByTempId = new Map<string, number>();
   let sortCounter = 0;
+  function assignSortOrder(node: PositionNode) {
+    sortOrderByTempId.set(node.tempId, sortCounter++);
+    for (const child of node.children) assignSortOrder(child);
+  }
+  assignSortOrder(hierarchy);
 
-  // Recursive insert (one by one to capture parent IDs)
-  async function insertRecursive(node: PositionNode, parentDbId: string | null) {
-    // Determine BSC level
+  function buildEntry(node: PositionNode, dbId: string, parentDbId: string | null): Record<string, unknown> {
     let bscLevel: string;
     if (node.positionType === "board") bscLevel = "corporate";
     else if (node.positionType === "executive") bscLevel = "executive";
@@ -56,6 +65,7 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
     }
 
     const entry: Record<string, unknown> = {
+      id: dbId,
       tenant_id: tenantId,
       position_type: node.positionType,
       office_department_name: node.positionType === "section_supervisor"
@@ -67,7 +77,7 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
       reports_to_id: parentDbId,
       custom_fields: customFieldsObj,
       bsc_level: bscLevel,
-      sort_order: sortCounter++,
+      sort_order: sortOrderByTempId.get(node.tempId)!,
     };
 
     // Add section_name for section supervisors
@@ -75,27 +85,38 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
       entry.section_name = node.sectionName || null;
     }
 
-    const { data, error } = await supabase
-      .from("org_positions")
-      .insert(entry)
-      .select("id")
-      .single();
-    if (error) throw error;
-
-    const dbId = data.id;
-
-    for (const child of node.children) {
-      await insertRecursive(child, dbId);
-    }
+    return entry;
   }
 
-  await insertRecursive(hierarchy, null);
+  // Level-by-level bulk insert (BFS) instead of one row at a time: every
+  // node in a level only needs its parent's id, which is generated
+  // client-side (not read back from the DB) before that parent is even
+  // inserted, so a whole level can go in a single round trip. An
+  // N-position hierarchy used to be N sequential inserts, felt as
+  // onboarding-wizard latency while the company_admin waits; it's now
+  // depth(tree) round trips.
+  let currentLevel: { node: PositionNode; dbId: string; parentDbId: string | null }[] = [
+    { node: hierarchy, dbId: randomUUID(), parentDbId: null },
+  ];
+  while (currentLevel.length > 0) {
+    const entries = currentLevel.map(({ node, dbId, parentDbId }) => buildEntry(node, dbId, parentDbId));
+    const { error } = await supabase.from("org_positions").insert(entries);
+    if (error) throw error;
+
+    const nextLevel: { node: PositionNode; dbId: string; parentDbId: string | null }[] = [];
+    for (const { node, dbId } of currentLevel) {
+      for (const child of node.children) {
+        nextLevel.push({ node: child, dbId: randomUUID(), parentDbId: dbId });
+      }
+    }
+    currentLevel = nextLevel;
+  }
 
   // onboarding_completed is set only once cascade generation actually
   // succeeds for every position (see generateCascadedBSCs below) — saving
   // the hierarchy tree is a necessary first step, not completion itself.
 
-  await supabase.from("audit_log").insert({
+  await writeAuditLog(supabase, {
     tenant_id: tenantId,
     user_id: user.id,
     action: "save_org_hierarchy",

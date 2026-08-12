@@ -4,7 +4,7 @@ import { computeAutoStatus, computeProgressPercent, perspectiveBucket } from "./
 
 // ─── Types ───────────────────────────────────────────────────
 
-type CascadeWeights = {
+export type CascadeWeights = {
   section_own_weight: number;
   section_subordinate_weight: number;
   department_own_weight: number;
@@ -59,13 +59,13 @@ function computeKpiScore(actual: string | null, target: string | null, lowerIsBe
   return Math.min(pct, 100);
 }
 
-function weightedAverage(scores: { score: number; weight: number }[]): number {
+export function weightedAverage(scores: { score: number; weight: number }[]): number {
   const totalWeight = scores.reduce((sum, s) => sum + s.weight, 0);
   if (totalWeight === 0) return 0;
   return scores.reduce((sum, s) => sum + s.score * s.weight, 0) / totalWeight;
 }
 
-function computeScorecardScore(rows: ScorecardRow[]) {
+export function computeScorecardScore(rows: ScorecardRow[]) {
   let onTrack = 0, atRisk = 0, offTrack = 0;
 
   const bucketScores: Record<string, { score: number; weight: number }[]> = {
@@ -126,6 +126,43 @@ function computeScorecardScore(rows: ScorecardRow[]) {
     offTrack,
     total: rows.length,
   };
+}
+
+/**
+ * The cascade rule itself: a position's composite score is its own score
+ * for a leaf, or an own/subordinate-weighted blend (weight chosen by
+ * position_type) once it has children. Extracted as a pure function so the
+ * weighting rule can be unit-tested without a live org hierarchy in the DB.
+ */
+export function computeCompositeScore(
+  positionType: string,
+  ownScore: number,
+  childComposites: number[],
+  weights: CascadeWeights,
+): number {
+  if (childComposites.length === 0) return ownScore;
+
+  const avgChild = childComposites.reduce((a, b) => a + b, 0) / childComposites.length;
+  let ownWeight: number, subWeight: number;
+
+  switch (positionType) {
+    case "section_supervisor":
+      ownWeight = weights.section_own_weight;
+      subWeight = weights.section_subordinate_weight;
+      break;
+    case "non_executive":
+      ownWeight = weights.department_own_weight;
+      subWeight = weights.department_subordinate_weight;
+      break;
+    case "executive":
+      ownWeight = weights.executive_own_weight;
+      subWeight = weights.executive_subordinate_weight;
+      break;
+    default:
+      ownWeight = 0.5;
+      subWeight = 0.5;
+  }
+  return ownScore * ownWeight + avgChild * subWeight;
 }
 
 // ─── Main Calculation Function ───────────────────────────────
@@ -227,32 +264,7 @@ export async function calculatePerformanceScores(
       .map((c) => compositeScores.get(c.id))
       .filter((v): v is number => v !== undefined);
 
-    if (childComposites.length === 0) {
-      // Leaf node — composite = own
-      compositeScores.set(pos.id, ownScore);
-    } else {
-      const avgChild = childComposites.reduce((a, b) => a + b, 0) / childComposites.length;
-      let ownWeight: number, subWeight: number;
-
-      switch (pos.position_type) {
-        case "section_supervisor":
-          ownWeight = weights.section_own_weight;
-          subWeight = weights.section_subordinate_weight;
-          break;
-        case "non_executive":
-          ownWeight = weights.department_own_weight;
-          subWeight = weights.department_subordinate_weight;
-          break;
-        case "executive":
-          ownWeight = weights.executive_own_weight;
-          subWeight = weights.executive_subordinate_weight;
-          break;
-        default:
-          ownWeight = 0.5;
-          subWeight = 0.5;
-      }
-      compositeScores.set(pos.id, ownScore * ownWeight + avgChild * subWeight);
-    }
+    compositeScores.set(pos.id, computeCompositeScore(pos.position_type, ownScore, childComposites, weights));
   }
 
   // Upsert performance_scores

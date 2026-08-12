@@ -1,6 +1,6 @@
 # Safina BSC Platform — Current-State Assessment, Gap Analysis & Target Architecture
 
-**Baseline document, updated 2026-08-12 (fourth revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised four times the same day to reflect 20 commits made against its own findings (16 fixes plus these 4 revisions) (see §13 for the full list). Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
+**Baseline document, updated 2026-08-12 (fifth revision).** Originally derived from direct inspection of this repository as of 2026-08-12; revised five times the same day to reflect 22 commits made against its own findings (17 fixes plus these 5 revisions) (see §13 for the full list). Everything below reflects the codebase's actual current state, re-verified against the same evidence standard as the original: source, migrations, config, and test output — not assumptions. Where something couldn't be verified from available evidence — including whether a manual configuration step the user still needs to perform (e.g. creating a Sentry account) has actually been done — that's stated explicitly. Nothing here is a compliance or certification claim; none exist. [SECURITY_ARCHITECTURE_ASSESSMENT.md](SECURITY_ARCHITECTURE_ASSESSMENT.md) is a point-in-time snapshot from earlier the same session and is **not** kept in sync with this document going forward — this file is the current source of truth.
 
 ---
 
@@ -109,7 +109,7 @@ Legend: **Complete** (feature-complete for its scope) · **Functional** (works, 
 
 **Backend:** No separate backend service — all business logic lives in Server Actions co-located with the routes that use them. Authorization is still inline `if (user.role !== ...)` conditionals rather than a centralized policy layer — that architectural choice is unchanged, though the duplicated invite/account-creation logic within it is now consolidated (`src/lib/user-invite.ts`).
 
-**Database:** Single shared Postgres instance (Supabase), 27 tables across 18 sequential migrations (`login_attempts` and `notifications` added this session), shared-schema multi-tenancy via `tenant_id` + Row-Level Security on every tenant-scoped table. Every FK and `tenant_id` column is indexed.
+**Database:** Single shared Postgres instance (Supabase), 26 tables across 19 sequential migrations (`login_attempts` and `notifications` added, `user_permissions` dropped, this session), shared-schema multi-tenancy via `tenant_id` + Row-Level Security on every tenant-scoped table. Every FK and `tenant_id` column is indexed.
 
 **Auth:** Supabase Auth, email/password only. Two client tiers: an RLS-scoped client for normal use, and a `server-only` service-role client (`src/lib/supabase/admin.ts`) that bypasses RLS. The one place that previously trusted a caller to have pre-scoped by tenant (`getCorporateBscView`) now asserts `tenantId` internally. Login now has Postgres-backed rate limiting (`src/lib/rate-limit.ts`) — 5 attempts/15min per email, 20/15min per IP.
 
@@ -146,7 +146,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | MFA | **Missing** (unchanged) |
 | CSP | **Missing** — baseline headers (frame-options, content-type-options, referrer-policy, permissions-policy) are implemented; CSP itself remains deliberately deferred pending a live environment to verify against without breaking auth/Supabase/document-export flows |
 | Centralized authorization layer | **Missing** — inline checks only, RLS as backstop (unchanged) |
-| Fine-grained ACL (`user_permissions` table) | **Dead schema** — defined with RLS policies, never referenced by application code (unchanged) |
+| Fine-grained ACL (`user_permissions` table) | **Resolved — removed.** Was dead schema (defined with RLS, never referenced by application code); dropped rather than implemented, since nothing needs per-resource sharing beyond the existing role-based access | 
 | Automated security testing (SAST/DAST/dependency scanning) | **Missing** — CI now exists (typecheck/lint/test) but runs no security-specific scanning |
 | ISO 27001 / SOC 2 / GDPR / other formal compliance | **Not applicable yet** — no evidence of, and no claim of, any formal compliance program |
 
@@ -163,7 +163,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | Cron jobs looped every tenant serially | **Improved, not eliminated** — bounded concurrency (5 at a time) via `mapWithConcurrency()`. A real fix still requires a job queue, deliberately not built without an actual scale signal | Was P2, now lower urgency |
 | No automated tests | **Fixed** — 65 tests across 8 files, covering the scoring/cascade engine, tenant isolation, cron auth, rate limiting, invite rollback, and concurrency helper | Was P1 |
 | No CI/CD | **Fixed** — `.github/workflows/ci.yml` runs typecheck + lint + test on every PR and push to `main` | Was P1 |
-| `user_permissions` table exists with RLS but is never used | **Not fixed** — still needs a decision: implement or drop | P3 |
+| `user_permissions` table exists with RLS but is never used | **Fixed** — dropped (migration `0019_drop_user_permissions.sql`), per the user's decision that nothing needs per-resource ACLs beyond existing role-based access | Was P3 |
 | `overdue_task` alert type allowed by schema/UI, never produced | **Not fixed** — dead code path, low impact | P4 |
 
 ---
@@ -187,7 +187,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 |---|---:|---|
 | Functional Completeness | 63 (61) | Notifications now reach users by email as well as in-app, on the same two live trigger points |
 | Architecture | 55 (50) | Cron concurrency, consolidated invite logic |
-| Security | 55 (45) | Rate limiting, extended audit logging, tenant-isolation fix, baseline headers — still missing MFA, centralized authz, SAST/DAST |
+| Security | 56 (55) | Removed a misleading half-built control (`user_permissions`: RLS-protected but never enforced by app code, which could have looked like real access control on inspection) — still missing MFA, centralized authz, SAST/DAST |
 | Privacy | 25 (25) | No change |
 | Scalability | 45 (30) | Both concrete ceilings found (cron serial loop, unbounded admin list) are fixed/improved — still no queue for true unbounded scale |
 | Performance | 40 (40) | No change — still no load-test evidence either way |
@@ -200,7 +200,7 @@ Real, not cosmetic: every tenant-scoped table has RLS enabled with a `tenant_id 
 | AI Readiness | 60 (60) | No change |
 | Enterprise Readiness | 36 (34) | Notifications now reach users outside the app (email), not just in it — still no SSO/MFA/billing/SLA |
 
-**Overall maturity score: ~45/100, up from ~35/100 at the original baseline (~44 after the third revision).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
+**Overall maturity score: ~45/100, up from ~35/100 at the original baseline (~45 after the fourth revision, essentially flat — dropping `user_permissions` closes a decision, not a capability gap).** The improvement is concentrated in DevSecOps, security, scalability, and now reliability — the domains this session's work actually targeted — while privacy, compliance, and globalization are unchanged because nothing addressed them. That's the expected shape of a punch-list session, not a general uplift.
 
 ---
 
@@ -223,7 +223,7 @@ Four of the six original items are resolved; the rest remain open.
 
 **Retain:** Next.js Server Actions model, Supabase Postgres + RLS-based tenant isolation, the AI tool-calling pattern for structured generation, the document-generation pipeline (docx/Puppeteer). These are sound choices for the current product, not technical debt.
 
-**Completed this session, no longer open:** organization/department modeling, user invitation flow, automated test suite, CI/CD gate, pagination on the actually-unbounded read, rate limiting on `/login`, cascade-weight configurability, the duplicated invite logic, the unguarded hierarchy recursion, error monitoring (code-complete — see the verification caveat in §1 and §3), and a notification system covering both in-app (header bell) and email (Resend) channels, both code-complete on the same two live trigger points: position assignment and weekly-advisory generation.
+**Completed this session, no longer open:** organization/department modeling, user invitation flow, automated test suite, CI/CD gate, pagination on the actually-unbounded read, rate limiting on `/login`, cascade-weight configurability, the duplicated invite logic, the unguarded hierarchy recursion, error monitoring (code-complete — see the verification caveat in §1 and §3), a notification system covering both in-app (header bell) and email (Resend) channels on the same two live trigger points (position assignment, weekly-advisory generation), and the `user_permissions` decision (dropped — see §6).
 
 **Still to add:** source-map upload for readable production stack traces (needs `SENTRY_AUTH_TOKEN`, deliberately deferred — see §3); a real job queue if/when tenant count outgrows bounded concurrency; more notification trigger points as concrete needs arise (e.g. team invites, plan approval).
 
@@ -239,7 +239,7 @@ Four of the six original items are resolved; the rest remain open.
 
 **P2 — High:** ~~unguarded hierarchy recursion~~ done · ~~consolidate duplicated account-creation logic~~ done · ~~pagination~~ done (for the table that actually needed it) · ~~bound cron concurrency~~ done · ~~`cascade_weights` settings UI~~ done.
 
-**P3 — Medium:** decide on and implement `user_permissions` (or remove it); ~~notification system (in-app + email)~~ done; formal risk register and incident-response plan.
+**P3 — Medium:** ~~decide on `user_permissions`~~ done (dropped) · ~~notification system (in-app + email)~~ done · formal risk register and incident-response plan.
 
 **P4 — Future:** billing integration; i18n/localization; data residency; multi-region deployment; formal compliance program (only once a specific customer or legal requirement names it).
 
@@ -247,14 +247,13 @@ Four of the six original items are resolved; the rest remain open.
 
 ## 12. Next Development Instructions Required From the Client
 
-Everything from the original list is done, error monitoring is code-complete, and the notification system (in-app + email) is built. In priority order, what's actually left:
+Everything from the original list is done, error monitoring is code-complete, the notification system (in-app + email) is built, and `user_permissions` is resolved (dropped). In priority order, what's actually left:
 
 1. **"Verify Sentry is actually receiving events, then add source-map upload."** — not a development task so much as a verification one: create the Sentry project, set `NEXT_PUBLIC_SENTRY_DSN`, hit `/api/sentry-check` once to confirm an event lands, then decide whether to wire up `withSentryConfig` (needs `SENTRY_AUTH_TOKEN`) for readable production stack traces.
 2. **"Verify Resend is actually sending, and that emails land (not spam)."** — same category as the Sentry item: create the Resend project, set `RESEND_API_KEY`, and once volume justifies it, verify a sending domain (`NOTIFICATION_EMAIL_FROM`) instead of the shared `resend.dev` testing address.
-3. **"Decide on `user_permissions`: implement fine-grained resource-level ACLs, or drop the unused table."** — currently misleading dead schema; either direction is fine, leaving it half-present isn't.
-4. **"Add a real job queue for the cron routes"** — only once tenant/position counts actually approach what bounded concurrency can't handle; don't build this speculatively.
-5. **"Decide on a billing provider and wire it behind the existing `license_tier`/`license_status` fields."** — needed before any real commercial launch, but is a business decision, not something to build ahead of that decision.
-6. **"Add more notification trigger points."** — the notification system currently fires on two events (position assignment, weekly-advisory generation); extending it to more (e.g. team invites, plan approval) is additive whenever there's a concrete need.
+3. **"Add a real job queue for the cron routes"** — only once tenant/position counts actually approach what bounded concurrency can't handle; don't build this speculatively.
+4. **"Decide on a billing provider and wire it behind the existing `license_tier`/`license_status` fields."** — needed before any real commercial launch, but is a business decision, not something to build ahead of that decision.
+5. **"Add more notification trigger points."** — the notification system currently fires on two events (position assignment, weekly-advisory generation); extending it to more (e.g. team invites, plan approval) is additive whenever there's a concrete need.
 
 Items intentionally **not** included: multi-region infrastructure, formal compliance certification, i18n, SAST/DAST scanning — each requires a business decision or an actual customer/regulatory trigger before it's worth building.
 
@@ -283,4 +282,6 @@ Fixes made against this document's own findings, in the order they were built (a
 17. Added an in-app notification system: `notifications` table, `createNotification()` helper, header bell (`NotificationBell.tsx`, visible app-wide), wired into position assignment and weekly-advisory generation
 18. Third revision of this document — reflected fix 17
 19. Added email notifications: `src/lib/email.ts` (Resend, gated on `RESEND_API_KEY`), extended `createNotification()` with an optional `email` param, wired into the same two trigger points as the in-app channel
-20. This update — fourth revision, reflecting fix 19
+20. Fourth revision of this document — reflected fix 19
+21. Dropped `user_permissions` (migration `0019_drop_user_permissions.sql`) — per the user's decision that nothing needs per-resource ACLs beyond existing role-based access
+22. This update — fifth revision, reflecting fix 21

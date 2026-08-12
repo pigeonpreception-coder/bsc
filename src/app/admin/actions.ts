@@ -40,13 +40,29 @@ export async function createTenant(formData: FormData) {
 
   if (error) throw error;
 
+  await admin.from("audit_log").insert({
+    tenant_id: tenant.id,
+    user_id: currentUser.id,
+    action: "create_tenant",
+    resource_type: "tenant",
+    resource_id: tenant.id,
+    old_value: null,
+    new_value: { company_name: companyName, license_tier: licenseTier },
+  });
+
   revalidatePath("/admin");
   return tenant.id as string;
 }
 
 export async function setLicenseStatus(tenantId: string, status: "active" | "suspended" | "expired") {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
   const admin = createAdminClient();
+
+  const { data: previous } = await admin
+    .from("tenants")
+    .select("license_status")
+    .eq("id", tenantId)
+    .single();
 
   const { error } = await admin
     .from("tenants")
@@ -55,12 +71,22 @@ export async function setLicenseStatus(tenantId: string, status: "active" | "sus
 
   if (error) throw error;
 
+  await admin.from("audit_log").insert({
+    tenant_id: tenantId,
+    user_id: currentUser.id,
+    action: "set_license_status",
+    resource_type: "tenant",
+    resource_id: tenantId,
+    old_value: { license_status: previous?.license_status ?? null },
+    new_value: { license_status: status },
+  });
+
   revalidatePath("/admin");
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
 export async function createCompanyAdmin(formData: FormData) {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
   const admin = createAdminClient();
 
   const tenantId = String(formData.get("tenant_id") ?? "");
@@ -92,6 +118,16 @@ export async function createCompanyAdmin(formData: FormData) {
     await admin.auth.admin.deleteUser(authUser.user.id);
     throw profileError;
   }
+
+  await admin.from("audit_log").insert({
+    tenant_id: tenantId,
+    user_id: currentUser.id,
+    action: "create_company_admin",
+    resource_type: "user",
+    resource_id: authUser.user.id,
+    old_value: null,
+    new_value: { email, full_name: fullName || null, role: "company_admin" },
+  });
 
   revalidatePath(`/admin/tenants/${tenantId}`);
 }

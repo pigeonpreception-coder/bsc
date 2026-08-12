@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculatePerformanceScores, saveDailySnapshot, generatePerformanceAlerts } from "@/lib/performance";
+import { isValidCronRequest } from "@/lib/cron-auth";
 
 // POST /api/cron/performance-recalc
 // Recalculates all performance scores and saves daily snapshot
 // Called by external cron or Supabase Edge Function at midnight
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

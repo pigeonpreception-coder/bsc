@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateDailyTasks } from "@/lib/tasks";
+import { isValidCronRequest } from "@/lib/cron-auth";
 
 // POST /api/cron/daily-tasks
 // Generates AI daily tasks for all users across all tenants
 // Called by external cron at 6:00 AM
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isValidCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

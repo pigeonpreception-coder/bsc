@@ -99,7 +99,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     ? await supabase.from("scorecards").select("id", { count: "exact", head: true }).eq("plan_id", id)
     : { count: 0 };
 
-  const corporateBsc = await getCorporateBscView(id);
+  const corporateBsc = await getCorporateBscView(id, plan.tenant_id);
   const orgStructure = await getOrgStructureView(plan.tenant_id);
   const hasObjectives = (corporateObjectives?.length ?? 0) > 0;
   const hasIntro = planSections?.some((s) => s.section_number === "1") ?? false;

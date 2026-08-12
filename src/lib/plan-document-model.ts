@@ -42,7 +42,7 @@ export async function buildPlanDocumentModel(planId: string): Promise<PlanDocume
   if (sectionsError) throw sectionsError;
 
   const [corporateBsc, orgStructure] = await Promise.all([
-    getCorporateBscView(planId),
+    getCorporateBscView(planId, plan.tenant_id),
     getOrgStructureView(plan.tenant_id),
   ]);
 

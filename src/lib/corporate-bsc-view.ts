@@ -31,14 +31,21 @@ export type CorporateBscView = {
   perspectiveGroups: CorporateBscPerspectiveGroup[];
 };
 
-/** Null if the tenant hasn't generated a Corporate scorecard for this plan yet. */
-export async function getCorporateBscView(planId: string): Promise<CorporateBscView | null> {
+/**
+ * Null if the tenant hasn't generated a Corporate scorecard for this plan yet.
+ *
+ * This uses the admin (RLS-bypassing) client, so `tenantId` must be asserted
+ * here rather than left to the caller — a plan_id alone isn't enough to scope
+ * the query safely.
+ */
+export async function getCorporateBscView(planId: string, tenantId: string): Promise<CorporateBscView | null> {
   const supabase = createAdminClient();
 
   const { data: scorecard } = await supabase
     .from("scorecards")
     .select("id, name")
     .eq("plan_id", planId)
+    .eq("tenant_id", tenantId)
     .eq("scorecard_type", "corporate")
     .order("created_at", { ascending: false })
     .limit(1)

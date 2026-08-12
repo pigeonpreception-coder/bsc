@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculatePerformanceScores, saveDailySnapshot, generatePerformanceAlerts } from "@/lib/performance";
 import { isValidCronRequest } from "@/lib/cron-auth";
+import { mapWithConcurrency } from "@/lib/concurrency";
 
 // POST /api/cron/performance-recalc
 // Recalculates all performance scores and saves daily snapshot
 // Called by external cron or Supabase Edge Function at midnight
+
+// See daily-tasks/route.ts for why this is a shared, conservative constant
+// rather than a per-route-tuned one.
+const TENANT_CONCURRENCY = 5;
 
 export async function POST(request: NextRequest) {
   if (!isValidCronRequest(request)) {
@@ -20,18 +25,16 @@ export async function POST(request: NextRequest) {
     .select("id")
     .eq("onboarding_completed", true);
 
-  const results: { tenant_id: string; positions?: number; error?: string }[] = [];
-
-  for (const tenant of tenants ?? []) {
+  const results = await mapWithConcurrency(tenants ?? [], TENANT_CONCURRENCY, async (tenant) => {
     try {
       const result = await calculatePerformanceScores(supabase, tenant.id);
       await saveDailySnapshot(supabase, tenant.id);
       await generatePerformanceAlerts(supabase, tenant.id);
-      results.push({ tenant_id: tenant.id, positions: result?.positionsProcessed ?? 0 });
+      return { tenant_id: tenant.id, positions: result?.positionsProcessed ?? 0 };
     } catch (err) {
-      results.push({ tenant_id: tenant.id, error: String(err) });
+      return { tenant_id: tenant.id, error: String(err) };
     }
-  }
+  });
 
   return NextResponse.json({ ok: true, results });
 }

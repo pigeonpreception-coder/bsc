@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyAdvisory } from "@/lib/tasks";
 import { isValidCronRequest } from "@/lib/cron-auth";
+import { mapWithConcurrency } from "@/lib/concurrency";
 
 // POST /api/cron/weekly-advisory
 // Generates AI weekly performance advisory for managers and executives
 // Called by external cron every Monday at 7:00 AM
+
+// See daily-tasks/route.ts for why this is a shared, conservative constant.
+// This route was the worst of the three: tenants × positions, fully serial,
+// each iteration an AI call — the clearest case of the cron-scaling finding.
+const TENANT_CONCURRENCY = 5;
 
 export async function POST(request: NextRequest) {
   if (!isValidCronRequest(request)) {
@@ -19,9 +25,7 @@ export async function POST(request: NextRequest) {
     .select("id, company_name")
     .eq("onboarding_completed", true);
 
-  const results: { tenant_id: string; advisories_generated: number; error?: string }[] = [];
-
-  for (const tenant of tenants ?? []) {
+  const results = await mapWithConcurrency(tenants ?? [], TENANT_CONCURRENCY, async (tenant) => {
     try {
       // Get executives, dept managers, and section supervisors
       const { data: positions } = await supabase
@@ -36,11 +40,11 @@ export async function POST(request: NextRequest) {
         count++;
       }
 
-      results.push({ tenant_id: tenant.id, advisories_generated: count });
+      return { tenant_id: tenant.id, advisories_generated: count };
     } catch (err) {
-      results.push({ tenant_id: tenant.id, advisories_generated: 0, error: String(err) });
+      return { tenant_id: tenant.id, advisories_generated: 0, error: String(err) };
     }
-  }
+  });
 
   return NextResponse.json({ ok: true, results });
 }

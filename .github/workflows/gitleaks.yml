@@ -1,0 +1,32 @@
+name: Gitleaks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Re-scan unchanged history too — a rule-set update (new secret
+    # pattern) should still surface something committed before this
+    # workflow existed, not just newly-pushed commits.
+    - cron: "43 3 * * 1"
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, not just the tip — a secret removed in a later
+          # commit is still recoverable from git history, and that's
+          # exactly the case gitleaks exists to catch.
+          fetch-depth: 0
+
+      # Runs the official gitleaks Docker image directly rather than the
+      # gitleaks/gitleaks-action marketplace wrapper, which has required a
+      # license key for some usage tiers in the past — this avoids that
+      # entirely (the underlying tool is MIT-licensed and free regardless).
+      - name: Run gitleaks
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest \
+            detect --source="/repo" --verbose --redact --exit-code 1

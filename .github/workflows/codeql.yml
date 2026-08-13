@@ -1,0 +1,39 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Catches new CodeQL query/CVE coverage against unchanged code — a scan
+    # only on push/PR would otherwise never re-run against code nobody
+    # touches this week.
+    - cron: "17 3 * * 1"
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # security-extended adds queries (e.g. SSRF, open redirect) not
+          # in the default suite — exactly the two most severe findings
+          # from this project's manual gap-scan passes were in those
+          # categories (see SAFINA_CURRENT_STATE_ASSESSMENT.md §16).
+          queries: security-extended
+
+      # JS/TS analysis is source-based, not build-based — no `next build`
+      # step needed here, so this isn't affected by the Windows-worktree
+      # build issue noted elsewhere in this repo's docs.
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

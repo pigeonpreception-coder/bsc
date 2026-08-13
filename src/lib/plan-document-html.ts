@@ -1,18 +1,12 @@
 import "server-only";
 import type { PlanDocumentModel, PlanDocumentSection } from "@/lib/plan-document-model";
+import { escapeHtml } from "@/lib/html-escape";
 
 // Shared with the PDF exporter (rendered via Puppeteer) — this is the one
 // place the document's visual layout is defined for print output.
 
 const NAVY = "#002147";
 const GOLD = "#C9A84C";
-
-// Exported for direct test coverage — this is the one boundary between
-// AI-generated (and therefore attacker-influenceable, via a prompt-injected
-// uploaded document) prose and the Puppeteer-rendered PDF output.
-export function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
 
 function renderBscTable(section: PlanDocumentSection): string {
   const bsc = section.bscTable;

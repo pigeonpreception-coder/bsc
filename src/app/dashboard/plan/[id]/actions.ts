@@ -14,6 +14,12 @@ const NOTIFICATION_CONCURRENCY = 5;
 export async function approveStrategicPlan(planId: string) {
   const { user, plan, supabase } = await requireCompanyAdminForPlan(planId);
 
+  // The UI hides the "Approve" button once the plan is already active, but
+  // that's a client-side gate only — without this, calling the action again
+  // (a replay, or a direct call bypassing the UI) would re-notify and
+  // re-email every other user in the tenant each time, with no cooldown.
+  if (plan.status === "active") return;
+
   const { error } = await supabase.from("strategic_plans").update({ status: "active" }).eq("id", planId);
   if (error) throw error;
 

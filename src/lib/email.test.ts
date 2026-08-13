@@ -53,4 +53,18 @@ describe("sendNotificationEmail", () => {
     const call = sendMock.mock.calls[0][0];
     expect(call.html).not.toContain("<a href");
   });
+
+  it("escapes HTML in the message — an admin-settable department/company name shouldn't be able to inject markup or a link into the email", async () => {
+    process.env.RESEND_API_KEY = "test-key";
+
+    await sendNotificationEmail(
+      "user@example.com",
+      "Subject",
+      '<a href="https://evil.example/phish">Click to verify</a>',
+    );
+
+    const call = sendMock.mock.calls[0][0];
+    expect(call.html).not.toContain("<a href=\"https://evil.example");
+    expect(call.html).toContain("&lt;a href=");
+  });
 });

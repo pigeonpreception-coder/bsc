@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { escapeHtml } from "@/lib/html-escape";
 
 const DEFAULT_FROM = "Safina BSC Platform <onboarding@resend.dev>";
 
@@ -28,12 +29,20 @@ export async function sendNotificationEmail(to: string, subject: string, message
   const appUrl = resolveAppUrl();
   const absoluteLink = link && appUrl ? `${appUrl}${link}` : null;
 
+  // message often embeds admin-settable free text (a department name, a
+  // company name) — unescaped, it could break the surrounding <p> markup
+  // or inject a live link into a real "Safina BSC Platform" branded email
+  // delivered to someone else. link itself doesn't need escaping: it's
+  // always a static route string this codebase passes in (e.g.
+  // "/dashboard"), never user-controlled.
+  const safeMessage = escapeHtml(message);
+
   await resend.emails.send({
     from: process.env.NOTIFICATION_EMAIL_FROM || DEFAULT_FROM,
     to,
     subject,
     html: absoluteLink
-      ? `<p>${message}</p><p><a href="${absoluteLink}">Open Safina BSC Platform</a></p>`
-      : `<p>${message}</p>`,
+      ? `<p>${safeMessage}</p><p><a href="${absoluteLink}">Open Safina BSC Platform</a></p>`
+      : `<p>${safeMessage}</p>`,
   });
 }

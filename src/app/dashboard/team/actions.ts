@@ -111,6 +111,7 @@ export async function assignPosition(formData: FormData) {
   if (!targetUser) throw new Error("Not authorized");
 
   let department: string | null = null;
+  let alreadyAssignedHere = false;
   if (positionId) {
     const { data: targetPosition } = await admin
       .from("org_positions")
@@ -123,6 +124,11 @@ export async function assignPosition(formData: FormData) {
       throw new Error("That position is already held by someone else — unassign them first.");
     }
     department = targetPosition?.section_name || targetPosition?.office_department_name || null;
+    // Re-submitting the same user/position pair is a no-op change, not a
+    // real assignment — without this, a company_admin could re-trigger the
+    // "you've been assigned" email to one specific employee indefinitely,
+    // with no cooldown.
+    alreadyAssignedHere = targetPosition?.user_id === targetUserId;
   }
 
   const { error: clearError } = await admin
@@ -147,16 +153,18 @@ export async function assignPosition(formData: FormData) {
       await admin.from("users").update({ department }).eq("id", targetUserId).eq("tenant_id", user.tenant_id);
     }
 
-    const message = department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.";
+    if (!alreadyAssignedHere) {
+      const message = department ? `You've been assigned to ${department}.` : "You've been assigned to a new position.";
 
-    await createNotification(admin, {
-      tenantId: user.tenant_id,
-      userId: targetUserId,
-      type: "position_assigned",
-      message,
-      link: "/dashboard",
-      email: targetUser?.email ? { to: targetUser.email, subject: "You've been assigned a new position" } : null,
-    });
+      await createNotification(admin, {
+        tenantId: user.tenant_id,
+        userId: targetUserId,
+        type: "position_assigned",
+        message,
+        link: "/dashboard",
+        email: targetUser?.email ? { to: targetUser.email, subject: "You've been assigned a new position" } : null,
+      });
+    }
   }
 
   revalidatePath("/dashboard/team");

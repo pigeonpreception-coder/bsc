@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { escapeHtml } from "./plan-document-html";
+import { escapeHtml } from "./html-escape";
 
 describe("escapeHtml", () => {
   it("leaves plain text untouched", () => {

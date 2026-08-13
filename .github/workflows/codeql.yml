@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           # security-extended adds queries (e.g. SSRF, open redirect) not
@@ -34,6 +34,6 @@ jobs:
       # JS/TS analysis is source-based, not build-based — no `next build`
       # step needed here, so this isn't affected by the Windows-worktree
       # build issue noted elsewhere in this repo's docs.
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"

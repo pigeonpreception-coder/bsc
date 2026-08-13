@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computePeriodEnd } from "@/lib/plan-period";
+import { isPathOwnedByTenant } from "@/lib/document-extract";
 import type { CascadingEntry } from "./CascadingList";
 import type { StatusRowEntry } from "./StatusRowList";
 import type { SupportingDocument } from "./SupportingDocumentsList";
@@ -42,6 +43,23 @@ export async function saveBusinessProfileDraft(planId: string | null, data: Busi
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id) {
     throw new Error("Not authorized");
+  }
+
+  // These are client-supplied storage paths, not something re-derived from
+  // an upload record — a real upload can only land under the caller's own
+  // tenant folder (Storage RLS), but nothing stops the client from sending
+  // a different path in this payload. Reject anything that isn't actually
+  // theirs before it's saved: buildUploadedDocumentContext() later reads
+  // these paths with the RLS-bypassing admin client, so an unvalidated
+  // foreign path here would leak another tenant's document content into
+  // this tenant's AI-generated plan.
+  const documentPaths = [
+    data.companyProfileUrl,
+    data.strategicPlanDocumentUrl,
+    ...data.supportingDocuments.map((d) => d.url),
+  ].filter((url): url is string => Boolean(url));
+  if (documentPaths.some((path) => !isPathOwnedByTenant(path, user.tenant_id!))) {
+    throw new Error("Invalid document reference.");
   }
 
   const supabase = await createClient();

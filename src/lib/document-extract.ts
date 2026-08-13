@@ -87,11 +87,23 @@ export async function fetchWebsiteText(url: string): Promise<string | null> {
 }
 
 type PlanDocumentFields = {
+  tenant_id: string;
   company_profile_url: string | null;
   strategic_plan_document_url: string | null;
   supporting_documents: { url: string; fileName: string }[] | null;
   website_url: string | null;
 };
+
+// Legitimate uploads (FileUploadField.tsx) always write to
+// `${tenantId}/${storageFolder}/...`, enforced by Storage RLS at upload
+// time — but nothing re-checks that once the path comes back through a
+// plan-save Server Action, which just persists whatever string the client
+// sends. Since extractUploaded below reads via the RLS-bypassing admin
+// client, an unvalidated path here would let one tenant's plan pull
+// another tenant's document content into its own AI-generated output.
+export function isPathOwnedByTenant(path: string, tenantId: string): boolean {
+  return path.startsWith(`${tenantId}/`);
+}
 
 /**
  * Combined excerpt text from every document/website a client has provided
@@ -103,6 +115,7 @@ export async function buildUploadedDocumentContext(plan: PlanDocumentFields): Pr
   const admin = createAdminClient();
 
   async function extractUploaded(path: string): Promise<string | null> {
+    if (!isPathOwnedByTenant(path, plan.tenant_id)) return null;
     const { data: file } = await admin.storage.from("company-documents").download(path);
     if (!file) return null;
     const buffer = Buffer.from(await file.arrayBuffer());

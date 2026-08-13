@@ -269,11 +269,12 @@ Generate today's task list now. Call submit_tasks.`;
   }));
 
   if (taskInserts.length > 0) {
-    await supabase.from("daily_tasks").insert(taskInserts);
+    const { error: tasksError } = await supabase.from("daily_tasks").insert(taskInserts);
+    if (tasksError) throw tasksError;
   }
 
   // Log generation
-  await supabase.from("task_generation_log").insert({
+  const { error: logError } = await supabase.from("task_generation_log").insert({
     tenant_id: tenantId,
     user_id: userId,
     generation_date: today,
@@ -281,6 +282,7 @@ Generate today's task list now. Call submit_tasks.`;
     tasks_rolled_over: rolledOver,
     ai_prompt_summary: `Generated ${tasks.length} tasks for ${fullName} (${position.position_type})`,
   });
+  if (logError) throw logError;
 
   return tasks.length;
 }
@@ -379,12 +381,16 @@ Do not use bullet points. Write in paragraph form.`;
   // Save advisory
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
-  await supabase.from("weekly_advisories").insert({
+  const { error: advisoryError } = await supabase.from("weekly_advisories").insert({
     tenant_id: tenantId,
     position_id: positionId,
     advisory_text: text,
     week_start: weekStart.toISOString().split("T")[0],
   });
+  // Checked (not just for consistency): the notification below says "your
+  // advisory is ready" — sending that after a failed insert would tell
+  // someone to go look at an advisory that doesn't exist.
+  if (advisoryError) throw advisoryError;
 
   if (position.user_id) {
     const { data: positionUser } = await supabase.from("users").select("email").eq("id", position.user_id).maybeSingle();

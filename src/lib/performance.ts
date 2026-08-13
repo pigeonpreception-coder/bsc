@@ -289,8 +289,12 @@ export async function calculatePerformanceScores(
   }
 
   // Upsert performance_scores
-  // Delete existing scores for this tenant, then insert fresh
-  await supabase.from("performance_scores").delete().eq("tenant_id", tenantId);
+  // Delete existing scores for this tenant, then insert fresh. Checked: a
+  // silently failed delete followed by a successful insert would leave
+  // duplicate rows per position, breaking every .maybeSingle() lookup
+  // against this table (e.g. the dashboard's own-score query) from then on.
+  const { error: deleteError } = await supabase.from("performance_scores").delete().eq("tenant_id", tenantId);
+  if (deleteError) throw deleteError;
 
   const scoresToInsert = sortedPositions.map((pos) => {
     const own = ownScores.get(pos.id);
@@ -353,7 +357,8 @@ export async function saveDailySnapshot(supabase: SupabaseClient, tenantId: stri
     snapshot_date: today,
   }));
 
-  await supabase.from("performance_history").insert(historyRows);
+  const { error } = await supabase.from("performance_history").insert(historyRows);
+  if (error) throw error;
 }
 
 // ─── Generate Alerts ─────────────────────────────────────────

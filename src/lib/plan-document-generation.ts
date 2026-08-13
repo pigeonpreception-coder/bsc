@@ -53,6 +53,7 @@ type GeneratedSection = {
 // generation step describe the same company the same way.
 export async function buildCompanyContextBlock(
   plan: Record<string, unknown> & {
+    tenant_id: string;
     company_profile_url: string | null;
     strategic_plan_document_url: string | null;
     supporting_documents: { url: string; fileName: string }[] | null;

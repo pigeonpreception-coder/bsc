@@ -402,16 +402,18 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
         .single();
       if (staffErr) throw staffErr;
 
-      await supabase
+      const { error: staffRowsErr } = await supabase
         .from("scorecard_rows")
         .insert(rowsToInsert(staffRows, staffScorecard.id, tenantId));
+      if (staffRowsErr) throw staffRowsErr;
 
-      await supabase.from("position_scorecards").insert({
+      const { error: staffLinkErr } = await supabase.from("position_scorecards").insert({
         tenant_id: tenantId,
         position_id: pos.id,
         scorecard_id: staffScorecard.id,
         scorecard_scope: "individual",
       });
+      if (staffLinkErr) throw staffLinkErr;
 
       return; // Staff only get one BSC, no office/dept BSC
     }
@@ -486,16 +488,18 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
       .single();
     if (offErr) throw offErr;
 
-    await supabase
+    const { error: officeRowsErr } = await supabase
       .from("scorecard_rows")
       .insert(rowsToInsert(officeRows, officeScorecard.id, tenantId));
+    if (officeRowsErr) throw officeRowsErr;
 
-    await supabase.from("position_scorecards").insert({
+    const { error: officeLinkErr } = await supabase.from("position_scorecards").insert({
       tenant_id: tenantId,
       position_id: pos.id,
       scorecard_id: officeScorecard.id,
       scorecard_scope: "office_department",
     });
+    if (officeLinkErr) throw officeLinkErr;
 
     // Store context for children cascade
     const officeContext = officeRows
@@ -551,16 +555,18 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
       .single();
     if (indErr) throw indErr;
 
-    await supabase
+    const { error: indivRowsErr } = await supabase
       .from("scorecard_rows")
       .insert(rowsToInsert(individualRows, indivScorecard.id, tenantId));
+    if (indivRowsErr) throw indivRowsErr;
 
-    await supabase.from("position_scorecards").insert({
+    const { error: indivLinkErr } = await supabase.from("position_scorecards").insert({
       tenant_id: tenantId,
       position_id: pos.id,
       scorecard_id: indivScorecard.id,
       scorecard_scope: "individual",
     });
+    if (indivLinkErr) throw indivLinkErr;
   }
 
   // Log AI session

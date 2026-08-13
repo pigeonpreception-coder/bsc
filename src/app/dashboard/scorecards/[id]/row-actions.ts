@@ -119,10 +119,24 @@ export async function addScorecardRow(scorecardId: string) {
   if (!user || user.role !== "company_admin" || !user.tenant_id) throw new Error("Not authorized");
 
   const supabase = await createClient();
+
+  // scorecardId is caller-supplied — same class of gap already fixed in
+  // column-actions.ts (addScorecardColumn/updateCellValue) and
+  // team/actions.ts (assignPosition): without this, a company_admin could
+  // insert a row against another tenant's scorecard.
+  const { data: scorecard } = await supabase
+    .from("scorecards")
+    .select("id")
+    .eq("id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!scorecard) throw new Error("Not authorized");
+
   const { data: existing } = await supabase
     .from("scorecard_rows")
     .select("sort_order, strategic_objective, kpi")
     .eq("scorecard_id", scorecardId)
+    .eq("tenant_id", user.tenant_id)
     .order("sort_order", { ascending: false });
 
   const rows = existing ?? [];

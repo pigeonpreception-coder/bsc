@@ -1,4 +1,5 @@
 import "server-only";
+import { lookup as dnsLookup } from "dns/promises";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_EXTRACTED_CHARS = 8000;
@@ -6,6 +7,109 @@ const MAX_EXTRACTED_CHARS = 8000;
 // An unbounded loop over supporting documents could balloon the prompt
 // size and request latency if a client uploads a large batch of files.
 const MAX_SUPPORTING_DOCUMENTS = 5;
+
+// ─── Website-fetch SSRF guards ─────────────────────────────────
+// website_url is a tenant-supplied string fetched server-side (see
+// fetchWebsiteText below) — without these, it's a straightforward SSRF
+// primitive against internal infrastructure (including cloud metadata
+// endpoints at 169.254.169.254).
+
+function ipv4ToInt(ip: string): number | null {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  let result = 0;
+  for (const part of parts) {
+    const n = Number(part);
+    if (!Number.isInteger(n) || n < 0 || n > 255) return null;
+    result = (result << 8) | n;
+  }
+  return result >>> 0;
+}
+
+/** True for loopback, private, link-local (incl. cloud metadata), and other non-routable ranges. Fails closed on anything unparseable. */
+export function isPrivateOrReservedIp(ip: string): boolean {
+  if (ip.includes(":")) {
+    const lower = ip.toLowerCase();
+    return (
+      lower === "::1" ||
+      lower === "::" ||
+      lower.startsWith("fc") ||
+      lower.startsWith("fd") || // fc00::/7 unique-local
+      lower.startsWith("fe80") || // link-local
+      lower.startsWith("::ffff:127.") // IPv4-mapped loopback
+    );
+  }
+
+  const addr = ipv4ToInt(ip);
+  if (addr === null) return true;
+
+  const inRange = (base: string, bits: number) => {
+    const baseAddr = ipv4ToInt(base)!;
+    const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+    return (addr & mask) === (baseAddr & mask);
+  };
+
+  return (
+    inRange("10.0.0.0", 8) ||
+    inRange("172.16.0.0", 12) ||
+    inRange("192.168.0.0", 16) ||
+    inRange("127.0.0.0", 8) ||
+    inRange("169.254.0.0", 16) ||
+    inRange("100.64.0.0", 10) || // CGNAT
+    inRange("0.0.0.0", 8) ||
+    inRange("192.0.0.0", 24) ||
+    inRange("192.0.2.0", 24) ||
+    inRange("198.18.0.0", 15) ||
+    inRange("198.51.100.0", 24) ||
+    inRange("203.0.113.0", 24) ||
+    inRange("224.0.0.0", 4) || // multicast
+    inRange("240.0.0.0", 4) // reserved
+  );
+}
+
+const MAX_REDIRECTS = 3;
+const MAX_RESPONSE_BYTES = 2_000_000; // raw bytes, well above what MAX_EXTRACTED_CHARS could ever need
+const FETCH_TIMEOUT_MS = 8000;
+
+// Resolves and re-validates every redirect hop's IP before following it —
+// following fetch's own automatic redirects would only check the first
+// hop, leaving a same-origin-looking URL that 302s to an internal address.
+async function safeFetch(initialUrl: string): Promise<Response | null> {
+  let currentUrl = initialUrl;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const parsed = new URL(currentUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+
+    let address: string;
+    try {
+      address = (await dnsLookup(parsed.hostname)).address;
+    } catch {
+      return null;
+    }
+    if (isPrivateOrReservedIp(address)) return null;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, { signal: controller.signal, redirect: "manual" });
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) return null;
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+    return response.ok ? response : null;
+  }
+  return null; // too many redirects
+}
 
 async function extractPdf(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import("pdf-parse");
@@ -24,6 +128,16 @@ async function extractDocx(buffer: Buffer): Promise<string> {
   return result.value;
 }
 
+// JSZip's public API decompresses each entry in one shot with no size
+// limit of its own — a crafted slide XML with a pathological compression
+// ratio would otherwise cost unbounded memory before this function ever
+// gets a chance to truncate anything. Bounding cumulative decompressed
+// length across slides caps the "many bloated slides" case; a single
+// slide's own decompression call is still only bounded by the process's
+// own memory, same as any other decompression call in this codebase —
+// caught by extractDocumentText's try/catch below rather than crashing.
+const MAX_PPTX_DECOMPRESSED_CHARS = 2_000_000;
+
 async function extractPptx(buffer: Buffer): Promise<string> {
   const JSZip = (await import("jszip")).default;
   const zip = await JSZip.loadAsync(buffer);
@@ -32,8 +146,11 @@ async function extractPptx(buffer: Buffer): Promise<string> {
     .sort();
 
   const texts: string[] = [];
+  let decompressedChars = 0;
   for (const name of slideFiles) {
+    if (decompressedChars > MAX_PPTX_DECOMPRESSED_CHARS) break;
     const xml = await zip.files[name].async("string");
+    decompressedChars += xml.length;
     const matches = xml.match(/<a:t>([^<]*)<\/a:t>/g) ?? [];
     const slideText = matches.map((m) => m.replace(/<\/?a:t>/g, "")).join(" ");
     if (slideText.trim()) texts.push(slideText);
@@ -69,9 +186,26 @@ export async function extractDocumentText(buffer: Buffer, fileName: string): Pro
 /** Best-effort plain-text fetch of a company website for AI context. */
 export async function fetchWebsiteText(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) return null;
-    const html = await response.text();
+    const response = await safeFetch(url);
+    if (!response?.body) return null;
+
+    // Read with a hard byte cap instead of response.text(), which buffers
+    // the entire body regardless of size — a slow/large response would
+    // otherwise cost memory well before MAX_EXTRACTED_CHARS ever applies.
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        break;
+      }
+      chunks.push(value);
+    }
+    const html = Buffer.concat(chunks).toString("utf-8");
 
     const text = html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")

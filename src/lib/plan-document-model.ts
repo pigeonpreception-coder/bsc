@@ -24,13 +24,19 @@ export type PlanDocumentModel = {
   sections: PlanDocumentSection[];
 };
 
-export async function buildPlanDocumentModel(planId: string): Promise<PlanDocumentModel> {
+// tenantId is asserted internally rather than trusted from the caller —
+// this uses the RLS-bypassing admin client, and its one current caller
+// happens to check tenant ownership first, but that's an easy invariant
+// for a future caller to forget (see the same pattern already fixed in
+// getCorporateBscView).
+export async function buildPlanDocumentModel(planId: string, tenantId: string): Promise<PlanDocumentModel> {
   const supabase = createAdminClient();
 
   const { data: plan, error: planError } = await supabase
     .from("strategic_plans")
     .select("company_name, period_start, period_end, strategic_period_years, tenant_id")
     .eq("id", planId)
+    .eq("tenant_id", tenantId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
 

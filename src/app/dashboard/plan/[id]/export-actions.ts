@@ -41,7 +41,7 @@ export async function downloadStrategicPlan(planId: string) {
   const { user, plan } = await requireCompanyAdminForPlan(planId);
   const admin = createAdminClient();
 
-  const model = await buildPlanDocumentModel(planId);
+  const model = await buildPlanDocumentModel(planId, plan.tenant_id);
   const [docxBuffer, pdfBuffer] = await Promise.all([renderPlanDocx(model), renderPlanPdf(model)]);
 
   const timestamp = Date.now();

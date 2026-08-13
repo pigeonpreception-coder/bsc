@@ -30,8 +30,14 @@ export function evaluateRateLimit(emailAttempts: number, ipAttempts: number | nu
   return { allowed: true };
 }
 
+// login_attempts covers more than just login now — the `action` column
+// keeps each action's counters independent (failed logins don't count
+// toward the password-reset limit and vice versa).
+export type RateLimitAction = "login" | "password_reset";
+
 async function countSince(
   admin: ReturnType<typeof createAdminClient>,
+  action: RateLimitAction,
   column: "email" | "ip_address",
   value: string,
   since: string,
@@ -39,26 +45,27 @@ async function countSince(
   const { count } = await admin
     .from("login_attempts")
     .select("id", { count: "exact", head: true })
+    .eq("action", action)
     .eq(column, value)
     .gte("attempted_at", since);
   return count ?? 0;
 }
 
-/** Checked before attempting a password verification, not after. */
-export async function checkLoginRateLimit(email: string, ip: string | null): Promise<RateLimitResult> {
+/** Checked before attempting the action itself, not after. */
+export async function checkRateLimit(action: RateLimitAction, email: string, ip: string | null): Promise<RateLimitResult> {
   const admin = createAdminClient();
   const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
 
-  const emailAttempts = await countSince(admin, "email", email, windowStart);
-  const ipAttempts = ip ? await countSince(admin, "ip_address", ip, windowStart) : null;
+  const emailAttempts = await countSince(admin, action, "email", email, windowStart);
+  const ipAttempts = ip ? await countSince(admin, action, "ip_address", ip, windowStart) : null;
 
   return evaluateRateLimit(emailAttempts, ipAttempts);
 }
 
 /** Records every attempt (success or failure) so both counters above stay accurate. */
-export async function recordLoginAttempt(email: string, ip: string | null, success: boolean): Promise<void> {
+export async function recordAttempt(action: RateLimitAction, email: string, ip: string | null, success: boolean): Promise<void> {
   const admin = createAdminClient();
-  await admin.from("login_attempts").insert({ email, ip_address: ip, success });
+  await admin.from("login_attempts").insert({ action, email, ip_address: ip, success });
 
   // Opportunistic cleanup instead of a dedicated cron job — cheap at this
   // table's expected volume, and keeps it from growing unbounded.
@@ -67,3 +74,12 @@ export async function recordLoginAttempt(email: string, ip: string | null, succe
     await admin.from("login_attempts").delete().lt("attempted_at", cutoff);
   }
 }
+
+export const checkLoginRateLimit = (email: string, ip: string | null) => checkRateLimit("login", email, ip);
+export const recordLoginAttempt = (email: string, ip: string | null, success: boolean) =>
+  recordAttempt("login", email, ip, success);
+
+export const checkPasswordResetRateLimit = (email: string, ip: string | null) =>
+  checkRateLimit("password_reset", email, ip);
+export const recordPasswordResetAttempt = (email: string, ip: string | null, success: boolean) =>
+  recordAttempt("password_reset", email, ip, success);

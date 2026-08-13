@@ -7,7 +7,10 @@ import type { PlanDocumentModel, PlanDocumentSection } from "@/lib/plan-document
 const NAVY = "#002147";
 const GOLD = "#C9A84C";
 
-function escapeHtml(text: string): string {
+// Exported for direct test coverage — this is the one boundary between
+// AI-generated (and therefore attacker-influenceable, via a prompt-injected
+// uploaded document) prose and the Puppeteer-rendered PDF output.
+export function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 

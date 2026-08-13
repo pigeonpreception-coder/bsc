@@ -36,7 +36,19 @@ export async function inviteUserAccount(params: InviteUserAccountParams): Promis
   const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(params.email, {
     redirectTo: `${params.origin}/auth/reset-password`,
   });
-  if (authError) throw authError;
+  if (authError) {
+    // auth.users is shared/global across every tenant in this single
+    // Supabase project — surfacing the raw "already registered" error
+    // verbatim would let a company_admin at one tenant learn whether an
+    // arbitrary email has an account anywhere on the platform, including
+    // in a different tenant. Generalize just this one case; every other
+    // error (invalid email, network failure, etc.) doesn't carry that
+    // same cross-tenant signal, so it's still surfaced as-is.
+    if (authError.code === "email_exists" || authError.code === "user_already_exists") {
+      throw new Error("Could not send the invite. Check the email address and try again.");
+    }
+    throw authError;
+  }
 
   const { error: profileError } = await admin.from("users").insert({
     id: authUser.user.id,

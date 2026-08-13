@@ -39,10 +39,24 @@ export type BusinessProfileDraft = {
 };
 
 
+// Every one of these fields is interpolated verbatim into every AI
+// generation prompt for this plan (buildCompanyContextBlock) — with no
+// cap, an oversized submission doesn't just cost more to store, it makes
+// every subsequent generation call more expensive too. The ai_generation
+// rate limiter (§18) throttles call frequency, not cost per call; this is
+// the size-side complement to that. 100KB is generous for legitimate
+// business-profile text and well under Next's own 1MB Server Action body
+// limit.
+const MAX_BUSINESS_PROFILE_PAYLOAD_BYTES = 100_000;
+
 export async function saveBusinessProfileDraft(planId: string | null, data: BusinessProfileDraft) {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id) {
     throw new Error("Not authorized");
+  }
+
+  if (JSON.stringify(data).length > MAX_BUSINESS_PROFILE_PAYLOAD_BYTES) {
+    throw new Error("This submission is too large. Shorten the text fields and try again.");
   }
 
   // These are client-supplied storage paths, not something re-derived from

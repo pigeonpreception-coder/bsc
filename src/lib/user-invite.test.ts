@@ -100,6 +100,17 @@ describe("inviteUserAccount", () => {
     expect(state.insertedRows.users ?? []).toEqual([]);
   });
 
+  it("generalizes an 'already registered' error instead of confirming the email exists elsewhere", async () => {
+    const alreadyRegistered = Object.assign(new Error("A user with this email address has already been registered"), {
+      code: "email_exists",
+    });
+    authAdmin.inviteUserByEmail.mockResolvedValue({ data: null, error: alreadyRegistered });
+
+    await expect(
+      inviteUserAccount({ email: "existing@example.com", fullName: null, role: "staff", tenantId: "t", origin: null }),
+    ).rejects.toThrow("Could not send the invite. Check the email address and try again.");
+  });
+
   it("rolls back the auth user if the profile insert fails", async () => {
     authAdmin.inviteUserByEmail.mockResolvedValue({ data: { user: { id: "user-3" } }, error: null });
     state.nextInsertError = { message: "duplicate key value violates unique constraint" };

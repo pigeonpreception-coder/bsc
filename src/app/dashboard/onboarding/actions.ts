@@ -29,10 +29,22 @@ type PositionNode = {
 
 // ─── Save Hierarchy ──────────────────────────────────────────
 
+// Bounds both the JSON.parse cost and the size of the bulk-insert this
+// triggers (one org_positions row per node, then one to two AI calls per
+// node in generateCascadedBSCs) — tighter than Next's own 1MB Server
+// Action body default, since even within that, a company_admin could
+// otherwise submit thousands of tiny position nodes in one save. 300KB is
+// generous for any realistic org chart.
+const MAX_HIERARCHY_JSON_BYTES = 300_000;
+
 export async function saveOrgHierarchy(hierarchyJson: string) {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id)
     throw new Error("Not authorized");
+
+  if (hierarchyJson.length > MAX_HIERARCHY_JSON_BYTES) {
+    throw new Error("This organization structure is too large to save. Reduce the number of positions and try again.");
+  }
 
   const supabase = await createClient();
   const hierarchy: PositionNode = JSON.parse(hierarchyJson);

@@ -8,6 +8,13 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // @supabase/ssr's own default omits `secure` entirely (and sets
+      // httpOnly: false, which is intentional on their part — the browser
+      // client needs to read this cookie directly, so that one isn't
+      // something to override). `secure` costs nothing to set explicitly
+      // and works fine even on localhost (modern browsers treat it as a
+      // secure context), so there's no reason to leave it unset.
+      cookieOptions: { secure: true },
       cookies: {
         getAll() {
           return cookieStore.getAll();

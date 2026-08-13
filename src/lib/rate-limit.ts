@@ -32,8 +32,11 @@ export function evaluateRateLimit(emailAttempts: number, ipAttempts: number | nu
 
 // login_attempts covers more than just login now — the `action` column
 // keeps each action's counters independent (failed logins don't count
-// toward the password-reset limit and vice versa).
-export type RateLimitAction = "login" | "password_reset";
+// toward the password-reset limit and vice versa). For "ai_generation",
+// `email` holds a user id, not an actual email — it's just a text column
+// and reusing it avoids a second table for what's the same "N per window"
+// shape.
+export type RateLimitAction = "login" | "password_reset" | "ai_generation";
 
 async function countSince(
   admin: ReturnType<typeof createAdminClient>,
@@ -83,3 +86,26 @@ export const checkPasswordResetRateLimit = (email: string, ip: string | null) =>
   checkRateLimit("password_reset", email, ip);
 export const recordPasswordResetAttempt = (email: string, ip: string | null, success: boolean) =>
   recordAttempt("password_reset", email, ip, success);
+
+// AI generation is authenticated (unlike login/password-reset), so
+// per-user throttling alone is the defense — no IP dimension needed, and
+// the threshold is far more generous since one legitimate onboarding
+// session can easily trigger a dozen generation calls (multiple sections,
+// a couple of regenerates each) without anyone doing anything wrong.
+export const MAX_AI_GENERATION_PER_WINDOW = 20;
+
+export function evaluateAiGenerationRateLimit(count: number): RateLimitResult {
+  if (count >= MAX_AI_GENERATION_PER_WINDOW) {
+    return { allowed: false, reason: "You're generating content too quickly. Wait a few minutes and try again." };
+  }
+  return { allowed: true };
+}
+
+export async function checkAiGenerationRateLimit(userId: string): Promise<RateLimitResult> {
+  const admin = createAdminClient();
+  const windowStart = new Date(Date.now() - WINDOW_MINUTES * 60 * 1000).toISOString();
+  const count = await countSince(admin, "ai_generation", "email", userId, windowStart);
+  return evaluateAiGenerationRateLimit(count);
+}
+
+export const recordAiGenerationAttempt = (userId: string) => recordAttempt("ai_generation", userId, null, true);

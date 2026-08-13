@@ -42,13 +42,16 @@ const OBJECTIVES_TOOL = {
 type GeneratedObjective = { objective_text: string; perspective: string };
 export type ObjectiveResult = { id: string; objectiveText: string; perspective: string };
 
-export async function generateCorporateObjectives(planId: string): Promise<ObjectiveResult[]> {
+// tenantId is asserted internally rather than trusted from the caller — see
+// buildPlanDocumentModel in plan-document-model.ts for why.
+export async function generateCorporateObjectives(planId: string, tenantId: string): Promise<ObjectiveResult[]> {
   const supabase = createAdminClient();
 
   const { data: plan, error: planError } = await supabase
     .from("strategic_plans")
     .select("*")
     .eq("id", planId)
+    .eq("tenant_id", tenantId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
 
@@ -173,13 +176,18 @@ export function formatObjectivesSummary(objectives: ObjectiveResult[]): string {
   return objectives.map((o) => `- [${o.perspective}] ${o.objectiveText}`).join("\n");
 }
 
-export async function generateStrategicThemes(planId: string, objectives: ObjectiveResult[]): Promise<ThemeResult[]> {
+export async function generateStrategicThemes(
+  planId: string,
+  tenantId: string,
+  objectives: ObjectiveResult[],
+): Promise<ThemeResult[]> {
   const supabase = createAdminClient();
 
   const { data: plan, error: planError } = await supabase
     .from("strategic_plans")
     .select("*")
     .eq("id", planId)
+    .eq("tenant_id", tenantId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
 
@@ -306,6 +314,7 @@ type GeneratedAlignment = { objective_number: number; theme_numbers: number[] };
 
 export async function alignObjectivesToThemes(
   planId: string,
+  tenantId: string,
   objectives: ObjectiveResult[],
   themes: ThemeResult[],
 ): Promise<void> {
@@ -315,6 +324,7 @@ export async function alignObjectivesToThemes(
     .from("strategic_plans")
     .select("tenant_id, company_name")
     .eq("id", planId)
+    .eq("tenant_id", tenantId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
 

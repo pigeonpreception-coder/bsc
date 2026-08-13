@@ -87,8 +87,14 @@ Key/core products & services: ${productsServices.filter((p) => p.description).ma
 Additional context: ${plan.additional_info || "n/a"}${documentContext}`;
 }
 
+// tenantId is asserted internally rather than trusted from the caller — see
+// buildPlanDocumentModel in plan-document-model.ts for why (this uses the
+// same RLS-bypassing admin client, and today's callers all pre-check
+// tenant ownership, but that's an easy invariant for a future caller to
+// forget).
 export async function generatePlanDocumentSections(
   planId: string,
+  tenantId: string,
   topLevelSectionNumbers: string[],
   extraContext?: string,
 ) {
@@ -98,6 +104,7 @@ export async function generatePlanDocumentSections(
     .from("strategic_plans")
     .select("*")
     .eq("id", planId)
+    .eq("tenant_id", tenantId)
     .single();
   if (planError || !plan) throw new Error("Strategic plan not found");
 

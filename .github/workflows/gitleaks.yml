@@ -11,6 +11,9 @@ on:
     # workflow existed, not just newly-pushed commits.
     - cron: "43 3 * * 1"
 
+permissions:
+  contents: read
+
 jobs:
   gitleaks:
     runs-on: ubuntu-latest

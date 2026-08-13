@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { evaluateRateLimit, MAX_ATTEMPTS_PER_EMAIL, MAX_ATTEMPTS_PER_IP } from "./rate-limit";
+import {
+  evaluateRateLimit,
+  MAX_ATTEMPTS_PER_EMAIL,
+  MAX_ATTEMPTS_PER_IP,
+  evaluateAiGenerationRateLimit,
+  MAX_AI_GENERATION_PER_WINDOW,
+} from "./rate-limit";
 
 describe("evaluateRateLimit", () => {
   it("allows a fresh email/IP with no prior attempts", () => {
@@ -31,5 +37,20 @@ describe("evaluateRateLimit", () => {
     // there's no possible IP-based reason string in the result.
     const result = evaluateRateLimit(0, null);
     expect(result).toEqual({ allowed: true });
+  });
+});
+
+describe("evaluateAiGenerationRateLimit", () => {
+  it("allows a fresh user with no prior attempts", () => {
+    expect(evaluateAiGenerationRateLimit(0)).toEqual({ allowed: true });
+  });
+
+  it("allows attempts right up to the threshold", () => {
+    expect(evaluateAiGenerationRateLimit(MAX_AI_GENERATION_PER_WINDOW - 1)).toEqual({ allowed: true });
+  });
+
+  it("blocks once the threshold is reached", () => {
+    const result = evaluateAiGenerationRateLimit(MAX_AI_GENERATION_PER_WINDOW);
+    expect(result.allowed).toBe(false);
   });
 });

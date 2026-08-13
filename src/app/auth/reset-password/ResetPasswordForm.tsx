@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { revokeOtherSessions } from "./actions";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold";
@@ -37,6 +38,15 @@ export default function ResetPasswordForm() {
         const supabase = createClient();
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
+
+        // Best-effort — awaited so it actually runs before navigation, but
+        // errors are swallowed inside the action itself: if this fails, the
+        // password change already succeeded and shouldn't be blocked.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session?.access_token) {
+          await revokeOtherSessions(sessionData.session.access_token);
+        }
+
         router.push("/");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

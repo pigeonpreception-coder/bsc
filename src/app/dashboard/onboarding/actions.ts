@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
 import { writeAuditLog } from "@/lib/audit-log";
+import { checkAiGenerationRateLimit, recordAiGenerationAttempt } from "@/lib/rate-limit";
 
 // ─── Types matching the client hierarchy ─────────────────────
 
@@ -220,6 +221,13 @@ export async function generateCascadedBSCs() {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id)
     throw new Error("Not authorized");
+
+  // This fans out to N AI calls internally (one or two per position) —
+  // one rate-limit slot per invocation, not per internal call, same as
+  // generatePlanSection5 in document-actions.ts.
+  const rateLimit = await checkAiGenerationRateLimit(user.id);
+  if (!rateLimit.allowed) throw new Error(rateLimit.reason);
+  await recordAiGenerationAttempt(user.id);
 
   const supabase = await createClient();
   const tenantId = user.tenant_id;

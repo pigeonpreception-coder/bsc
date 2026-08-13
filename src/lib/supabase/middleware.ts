@@ -10,6 +10,8 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // See src/lib/supabase/server.ts for why only `secure` is overridden.
+      cookieOptions: { secure: true },
       cookies: {
         getAll() {
           return request.cookies.getAll();

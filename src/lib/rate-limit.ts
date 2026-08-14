@@ -36,7 +36,7 @@ export function evaluateRateLimit(emailAttempts: number, ipAttempts: number | nu
 // `email` holds a user id, not an actual email — it's just a text column
 // and reusing it avoids a second table for what's the same "N per window"
 // shape.
-export type RateLimitAction = "login" | "password_reset" | "ai_generation";
+export type RateLimitAction = "login" | "password_reset" | "ai_generation" | "mfa_challenge";
 
 async function countSince(
   admin: ReturnType<typeof createAdminClient>,
@@ -86,6 +86,14 @@ export const checkPasswordResetRateLimit = (email: string, ip: string | null) =>
   checkRateLimit("password_reset", email, ip);
 export const recordPasswordResetAttempt = (email: string, ip: string | null, success: boolean) =>
   recordAttempt("password_reset", email, ip, success);
+
+// A 6-digit TOTP code is only 1,000,000 combinations — worth throttling the
+// same as a password guess. `email` here holds the user id, same reuse
+// pattern as ai_generation.
+export const checkMfaChallengeRateLimit = (userId: string, ip: string | null) =>
+  checkRateLimit("mfa_challenge", userId, ip);
+export const recordMfaChallengeAttempt = (userId: string, ip: string | null, success: boolean) =>
+  recordAttempt("mfa_challenge", userId, ip, success);
 
 // AI generation is authenticated (unlike login/password-reset), so
 // per-user throttling alone is the defense — no IP dimension needed, and

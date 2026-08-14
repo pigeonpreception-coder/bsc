@@ -70,6 +70,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <Link href="/dashboard/settings" className="hover:text-white">Settings</Link>
               </>
             )}
+            <Link href="/account" className="hover:text-white">Account &amp; Security</Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

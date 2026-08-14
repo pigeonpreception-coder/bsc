@@ -3,7 +3,10 @@ import * as Sentry from "@sentry/nextjs";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export type AuditLogEntry = {
-  tenant_id: string;
+  // null for actions with no tenant scope — e.g. a super_admin resetting a
+  // user's MFA factors, or acting on their own account (super_admin users
+  // have tenant_id: null).
+  tenant_id: string | null;
   user_id: string;
   action: string;
   resource_type: string;

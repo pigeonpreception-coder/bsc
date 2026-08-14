@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LicenseStatusForm from "./LicenseStatusForm";
 import CreateCompanyAdminForm from "./CreateCompanyAdminForm";
+import ResetMfaButton from "./ResetMfaButton";
 
 export default async function TenantDetailPage({
   params,
@@ -47,8 +48,11 @@ export default async function TenantDetailPage({
           {(users ?? []).map((u) => (
             <li key={u.id} className="flex items-center justify-between py-2 text-sm">
               <span>{u.full_name || u.email}</span>
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs capitalize text-gray-600">
-                {u.role.replace("_", " ")}
+              <span className="flex items-center gap-3">
+                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs capitalize text-gray-600">
+                  {u.role.replace("_", " ")}
+                </span>
+                <ResetMfaButton userId={u.id} />
               </span>
             </li>
           ))}

@@ -14,6 +14,32 @@ export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname.startsWith(path));
 }
 
+type Aal = { currentLevel: string | null; nextLevel: string | null } | null;
+
+/**
+ * True once a user has a verified TOTP factor but hasn't cleared the
+ * challenge for *this* session yet (currentLevel stays aal1 until they do).
+ * A user with no factor at all also sits at nextLevel aal1, not aal2, so
+ * this is false for them — see needsMandatoryMfaEnrollment for that case.
+ */
+export function needsMfaChallenge(aal: Aal): boolean {
+  return aal?.currentLevel === "aal1" && aal?.nextLevel === "aal2";
+}
+
+/**
+ * company_admin/super_admin are required to have MFA enrolled at all,
+ * distinct from needsMfaChallenge (which only fires for someone who's
+ * already enrolled but hasn't completed this session's challenge).
+ * nextLevel stays "aal1" for a user with zero factors, which is the signal
+ * used here rather than checking factor count directly, so callers don't
+ * need an extra listFactors() round trip on every request.
+ */
+export function needsMandatoryMfaEnrollment(role: string | null, aal: Aal, pathname: string): boolean {
+  if (pathname === "/account") return false;
+  if (aal?.nextLevel !== "aal1") return false;
+  return role === "company_admin" || role === "super_admin";
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -54,6 +80,29 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  if (user && !isPublicPath(request.nextUrl.pathname)) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (needsMfaChallenge(aal)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/auth/mfa-challenge";
+      url.searchParams.set("next", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+
+    // Only resolves role (an extra query) for a session that's still at
+    // aal1-with-no-factor — an enrolled user never pays this cost again.
+    if (aal?.nextLevel === "aal1") {
+      const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
+      if (needsMandatoryMfaEnrollment(profile?.role ?? null, aal, request.nextUrl.pathname)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/account";
+        url.searchParams.set("mfa", "required");
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;

@@ -92,8 +92,16 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Only resolves role (an extra query) for a session that's still at
-    // aal1-with-no-factor — an enrolled user never pays this cost again.
+    // Only resolves role (an extra query) for a session still at
+    // aal1-with-no-factor. That's a one-time cost for company_admin/
+    // super_admin, who eventually get forced through enrollment — but
+    // manager/staff/viewer are never required to enroll (§22), so this
+    // query runs on literally every request of theirs for the life of the
+    // session unless they opt in. Left as-is rather than adding a caching
+    // layer: it's a single indexed primary-key lookup on a small table,
+    // the same shape of query getCurrentUser() already does on every page
+    // load elsewhere in this app — not a new class of cost, just an
+    // additional instance of an existing one.
     if (aal?.nextLevel === "aal1") {
       const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).single();
       if (needsMandatoryMfaEnrollment(profile?.role ?? null, aal, request.nextUrl.pathname)) {

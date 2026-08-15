@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 type Row = Record<string, unknown>;
 
@@ -120,5 +120,48 @@ describe("inviteUserAccount", () => {
     ).rejects.toBeTruthy();
 
     expect(authAdmin.deleteUser).toHaveBeenCalledWith("user-3");
+  });
+
+  describe("origin trust", () => {
+    const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    afterEach(() => {
+      if (originalAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = originalAppUrl;
+    });
+
+    it("uses NEXT_PUBLIC_APP_URL instead of a caller-supplied origin, when set", async () => {
+      process.env.NEXT_PUBLIC_APP_URL = "https://real-safina-domain.example.com";
+      authAdmin.inviteUserByEmail.mockResolvedValue({ data: { user: { id: "user-4" } }, error: null });
+
+      await inviteUserAccount({
+        email: "z@example.com",
+        fullName: null,
+        role: "staff",
+        tenantId: "t",
+        origin: "https://attacker.example.com",
+      });
+
+      expect(authAdmin.inviteUserByEmail).toHaveBeenCalledWith("z@example.com", {
+        redirectTo: "https://real-safina-domain.example.com/auth/reset-password",
+      });
+    });
+
+    it("falls back to the caller-supplied origin only when no env var is configured", async () => {
+      delete process.env.NEXT_PUBLIC_APP_URL;
+      authAdmin.inviteUserByEmail.mockResolvedValue({ data: { user: { id: "user-5" } }, error: null });
+
+      await inviteUserAccount({
+        email: "w@example.com",
+        fullName: null,
+        role: "staff",
+        tenantId: "t",
+        origin: "https://app.example.com",
+      });
+
+      expect(authAdmin.inviteUserByEmail).toHaveBeenCalledWith("w@example.com", {
+        redirectTo: "https://app.example.com/auth/reset-password",
+      });
+    });
   });
 });

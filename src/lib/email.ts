@@ -1,6 +1,7 @@
 import "server-only";
 import { Resend } from "resend";
 import { escapeHtml } from "@/lib/html-escape";
+import { resolveAppUrl } from "@/lib/site-url";
 
 const DEFAULT_FROM = "Safina BSC Platform <onboarding@resend.dev>";
 
@@ -12,12 +13,6 @@ function getClient(): Resend | null {
   if (!process.env.RESEND_API_KEY) return null;
   if (!client) client = new Resend(process.env.RESEND_API_KEY);
   return client;
-}
-
-function resolveAppUrl(): string | null {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return null;
 }
 
 // Fire-and-forget, like createNotification() — a failed email send shouldn't

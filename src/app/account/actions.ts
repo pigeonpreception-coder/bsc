@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit-log";
 import { checkMfaChallengeRateLimit, recordMfaChallengeAttempt } from "@/lib/rate-limit";
+import { revokeOtherSessions } from "@/app/auth/reset-password/actions";
 
 export async function enrollMfaFactor(): Promise<{ factorId: string; qrCode: string; secret: string }> {
   const user = await getCurrentUser();
@@ -31,6 +32,17 @@ export async function verifyMfaEnrollment(factorId: string, code: string): Promi
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
   await recordMfaChallengeAttempt(user.id, null, !error);
   if (error) throw error;
+
+  // Best-effort, matching revokeOtherSessions' own comment on the
+  // password-reset flow it was built for: verifying a new device is
+  // exactly the moment a user worried about a compromised account (leaked
+  // password, stolen cookie) would want every OTHER already-open session
+  // ended, not just protected going forward. The UI on /account states
+  // this happens — this is what makes that statement true.
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session?.access_token) {
+    await revokeOtherSessions(sessionData.session.access_token);
+  }
 
   await writeAuditLog(supabase, {
     tenant_id: user.tenant_id,

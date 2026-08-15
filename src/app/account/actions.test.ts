@@ -6,24 +6,29 @@ const {
   challengeAndVerifyMock,
   unenrollMock,
   listFactorsMock,
+  getSessionMock,
   writeAuditLogMock,
   checkMfaChallengeRateLimitMock,
   recordMfaChallengeAttemptMock,
+  revokeOtherSessionsMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   enrollMock: vi.fn(),
   challengeAndVerifyMock: vi.fn(),
   unenrollMock: vi.fn(),
   listFactorsMock: vi.fn(),
+  getSessionMock: vi.fn(),
   writeAuditLogMock: vi.fn(),
   checkMfaChallengeRateLimitMock: vi.fn(),
   recordMfaChallengeAttemptMock: vi.fn(),
+  revokeOtherSessionsMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser: getCurrentUserMock }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: {
+      getSession: getSessionMock,
       mfa: {
         enroll: enrollMock,
         challengeAndVerify: challengeAndVerifyMock,
@@ -38,6 +43,7 @@ vi.mock("@/lib/rate-limit", () => ({
   checkMfaChallengeRateLimit: checkMfaChallengeRateLimitMock,
   recordMfaChallengeAttempt: recordMfaChallengeAttemptMock,
 }));
+vi.mock("@/app/auth/reset-password/actions", () => ({ revokeOtherSessions: revokeOtherSessionsMock }));
 
 const { enrollMfaFactor, verifyMfaEnrollment, unenrollMfaFactor } = await import("./actions");
 
@@ -57,10 +63,13 @@ describe("MFA account actions", () => {
     challengeAndVerifyMock.mockReset();
     unenrollMock.mockReset();
     listFactorsMock.mockReset();
+    getSessionMock.mockReset();
     writeAuditLogMock.mockReset();
     checkMfaChallengeRateLimitMock.mockReset();
     recordMfaChallengeAttemptMock.mockReset();
+    revokeOtherSessionsMock.mockReset();
     checkMfaChallengeRateLimitMock.mockResolvedValue({ allowed: true });
+    getSessionMock.mockResolvedValue({ data: { session: { access_token: "token-abc" } } });
   });
 
   describe("enrollMfaFactor", () => {
@@ -83,7 +92,7 @@ describe("MFA account actions", () => {
   });
 
   describe("verifyMfaEnrollment", () => {
-    it("audit-logs and records a successful attempt on successful verification", async () => {
+    it("audit-logs, revokes other sessions, and records a successful attempt on successful verification", async () => {
       getCurrentUserMock.mockResolvedValue(staff);
       challengeAndVerifyMock.mockResolvedValue({ data: {}, error: null });
 
@@ -91,19 +100,30 @@ describe("MFA account actions", () => {
 
       expect(challengeAndVerifyMock).toHaveBeenCalledWith({ factorId: "factor-1", code: "123456" });
       expect(recordMfaChallengeAttemptMock).toHaveBeenCalledWith("user-1", null, true);
+      expect(revokeOtherSessionsMock).toHaveBeenCalledWith("token-abc");
       expect(writeAuditLogMock).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ action: "enroll_mfa_factor", user_id: "user-1", tenant_id: "tenant-1" }),
       );
     });
 
-    it("does not audit-log and records a failed attempt when verification fails", async () => {
+    it("does not audit-log, revoke sessions, or record a successful attempt when verification fails", async () => {
       getCurrentUserMock.mockResolvedValue(staff);
       challengeAndVerifyMock.mockResolvedValue({ data: null, error: { message: "invalid code" } });
 
       await expect(verifyMfaEnrollment("factor-1", "000000")).rejects.toBeTruthy();
       expect(recordMfaChallengeAttemptMock).toHaveBeenCalledWith("user-1", null, false);
+      expect(revokeOtherSessionsMock).not.toHaveBeenCalled();
       expect(writeAuditLogMock).not.toHaveBeenCalled();
+    });
+
+    it("does not blow up if no session is available to revoke others from", async () => {
+      getCurrentUserMock.mockResolvedValue(staff);
+      challengeAndVerifyMock.mockResolvedValue({ data: {}, error: null });
+      getSessionMock.mockResolvedValue({ data: { session: null } });
+
+      await expect(verifyMfaEnrollment("factor-1", "123456")).resolves.toBeUndefined();
+      expect(revokeOtherSessionsMock).not.toHaveBeenCalled();
     });
 
     it("rejects before attempting a challenge once rate-limited", async () => {

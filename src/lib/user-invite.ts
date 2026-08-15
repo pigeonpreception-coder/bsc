@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createNotification } from "@/lib/notifications";
+import { resolveAppUrl } from "@/lib/site-url";
 
 export type UserRole = "company_admin" | "manager" | "staff" | "viewer";
 
@@ -10,7 +11,15 @@ export type InviteUserAccountParams = {
   role: UserRole;
   tenantId: string;
   department?: string | null;
-  /** Request origin, used to build the invite email's redirect link. */
+  /**
+   * Request origin, used as a last-resort fallback for the invite email's
+   * redirect link — only if neither NEXT_PUBLIC_APP_URL nor VERCEL_URL is
+   * set. Never trusted directly: it's a client-supplied header, and this
+   * function is reachable by an authenticated company_admin/super_admin
+   * inviting an arbitrary email, so an attacker-controlled origin here
+   * would point a real invite email at a phishing domain. See
+   * resolveAppUrl's own comment.
+   */
   origin: string | null;
 };
 
@@ -33,8 +42,9 @@ export async function inviteUserAccount(params: InviteUserAccountParams): Promis
   // doesn't support PKCE (the invite is opened by the invitee, not the admin
   // who sent it), so it delivers tokens as a URL hash fragment instead of a
   // ?code= param, which the browser client auto-detects on that page.
+  const origin = resolveAppUrl(params.origin);
   const { data: authUser, error: authError } = await admin.auth.admin.inviteUserByEmail(params.email, {
-    redirectTo: `${params.origin}/auth/reset-password`,
+    redirectTo: `${origin}/auth/reset-password`,
   });
   if (authError) {
     // auth.users is shared/global across every tenant in this single

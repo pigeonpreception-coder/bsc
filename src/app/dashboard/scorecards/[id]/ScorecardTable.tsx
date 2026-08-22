@@ -145,9 +145,9 @@ function renderFixedCell(
     case "key_initiatives":
       return <EditableTextCell value={row.key_initiatives} editable={canEditAll} onSave={(v) => save(row.id, "key_initiatives", v)} />;
     case "perspective_weight":
-      return <EditableTextCell value={row.perspective_weight} editable={canEditAll} onSave={(v) => save(row.id, "perspective_weight", v)} type="number" />;
+      return <EditableTextCell value={row.perspective_weight} editable={canEditAll} onSave={(v) => save(row.id, "perspective_weight", v)} type="number" min={0} max={100} />;
     case "objective_weight":
-      return <EditableTextCell value={row.objective_weight} editable={canEditAll} onSave={(v) => save(row.id, "objective_weight", v)} type="number" />;
+      return <EditableTextCell value={row.objective_weight} editable={canEditAll} onSave={(v) => save(row.id, "objective_weight", v)} type="number" min={0} max={100} />;
     case "kpi":
       return <EditableTextCell value={row.kpi} editable={canEditAll} onSave={(v) => save(row.id, "kpi", v)} />;
     case "unit":

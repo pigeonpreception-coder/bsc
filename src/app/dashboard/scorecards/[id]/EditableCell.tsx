@@ -25,11 +25,15 @@ export function EditableTextCell({
   editable,
   onSave,
   type = "text",
+  min,
+  max,
 }: {
   value: string | number | null;
   editable: boolean;
   onSave: (value: string) => Promise<void>;
   type?: "text" | "number";
+  min?: number;
+  max?: number;
 }) {
   const [localValue, setLocalValue] = useState(String(value ?? ""));
   const [syncedValue, setSyncedValue] = useState(value);
@@ -49,6 +53,8 @@ export function EditableTextCell({
     <div>
       <input
         type={type}
+        min={min}
+        max={max}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
         onBlur={() => {

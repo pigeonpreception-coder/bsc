@@ -1,18 +1,27 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const { sendNotificationEmailMock } = vi.hoisted(() => ({ sendNotificationEmailMock: vi.fn().mockResolvedValue(undefined) }));
+const { sendNotificationEmailMock, captureExceptionMock } = vi.hoisted(() => ({
+  sendNotificationEmailMock: vi.fn().mockResolvedValue(undefined),
+  captureExceptionMock: vi.fn(),
+}));
 vi.mock("./email", () => ({ sendNotificationEmail: sendNotificationEmailMock }));
+vi.mock("@sentry/nextjs", () => ({ captureException: captureExceptionMock }));
 
 const { createNotification } = await import("./notifications");
 
-function fakeClient() {
-  const insert = vi.fn().mockResolvedValue({ data: null, error: null });
+function fakeClient(insertResult: { error: unknown } = { error: null }) {
+  const insert = vi.fn().mockResolvedValue(insertResult);
   const from = vi.fn().mockReturnValue({ insert });
   return { client: { from } as unknown as SupabaseClient, from, insert };
 }
 
 describe("createNotification", () => {
+  beforeEach(() => {
+    sendNotificationEmailMock.mockReset().mockResolvedValue(undefined);
+    captureExceptionMock.mockReset();
+  });
+
   it("inserts a row scoped to the given tenant and user, with the link defaulted to null when omitted", async () => {
     const { client, from, insert } = fakeClient();
 
@@ -49,7 +58,6 @@ describe("createNotification", () => {
 
   it("does not attempt to send an email when the email param is omitted", async () => {
     const { client } = fakeClient();
-    sendNotificationEmailMock.mockClear();
 
     await createNotification(client, {
       tenantId: "tenant-1",
@@ -63,7 +71,6 @@ describe("createNotification", () => {
 
   it("sends an email with the notification's message and link when the email param is provided", async () => {
     const { client } = fakeClient();
-    sendNotificationEmailMock.mockClear();
 
     await createNotification(client, {
       tenantId: "tenant-1",
@@ -80,5 +87,39 @@ describe("createNotification", () => {
       "Your weekly performance advisory is ready.",
       "/dashboard",
     );
+  });
+
+  it("reports a failed insert to Sentry instead of leaving it invisible", async () => {
+    const dbError = { message: "constraint violation" };
+    const { client } = fakeClient({ error: dbError });
+
+    await expect(
+      createNotification(client, {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        type: "position_assigned",
+        message: "You've been assigned to Finance.",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(captureExceptionMock).toHaveBeenCalledWith(dbError, expect.anything());
+  });
+
+  it("catches a thrown email failure and reports it, without failing the caller", async () => {
+    const { client } = fakeClient();
+    const sendError = new Error("network failure");
+    sendNotificationEmailMock.mockRejectedValue(sendError);
+
+    await expect(
+      createNotification(client, {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        type: "position_assigned",
+        message: "You've been assigned to Finance.",
+        email: { to: "user@example.com", subject: "Subject" },
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(captureExceptionMock).toHaveBeenCalledWith(sendError, expect.anything());
   });
 });

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { computeAutoStatus } from "@/lib/scorecard";
 import { calculatePerformanceScores } from "@/lib/performance";
 import { writeAuditLog } from "@/lib/audit-log";
+import { parseOwnWeightPercent } from "@/lib/cascade-weights";
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -53,12 +54,18 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
   const canEdit = isAdmin || (isOwner && field === "actual" && ["manager", "staff"].includes(user.role));
   if (!canEdit) throw new Error("Not authorized to edit this field");
 
+  // perspective_weight/objective_weight feed directly into weightedAverage()
+  // (src/lib/performance.ts) with no clamping downstream — an unvalidated
+  // negative or non-finite weight there can produce a nonsensical score
+  // (e.g. a negative percentage) rendered tenant-wide on the dashboard.
+  // Reuses the same 0-100 whole-number validation already built for the
+  // sibling cascade-weight concept rather than duplicating it.
   const update: Record<string, unknown> = {
     [field]:
       value === ""
         ? null
         : NUMERIC_FIELDS.includes(field)
-          ? Number(value)
+          ? parseOwnWeightPercent(value)
           : BOOLEAN_FIELDS.includes(field)
             ? value === "true"
             : value,

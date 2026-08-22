@@ -1,4 +1,5 @@
 import "server-only";
+import * as Sentry from "@sentry/nextjs";
 import { Resend } from "resend";
 import { escapeHtml } from "@/lib/html-escape";
 import { resolveAppUrl } from "@/lib/site-url";
@@ -32,7 +33,12 @@ export async function sendNotificationEmail(to: string, subject: string, message
   // "/dashboard"), never user-controlled.
   const safeMessage = escapeHtml(message);
 
-  await resend.emails.send({
+  // Resend's send() resolves with an { error } field on an API-level
+  // failure (invalid recipient, account issue, key rotation) rather than
+  // throwing — silently discarding that field meant a failed send left no
+  // signal anywhere, the exact gap writeAuditLog() was built to close for
+  // audit_log inserts. Reported the same way here for consistency.
+  const { error } = await resend.emails.send({
     from: process.env.NOTIFICATION_EMAIL_FROM || DEFAULT_FROM,
     to,
     subject,
@@ -40,4 +46,7 @@ export async function sendNotificationEmail(to: string, subject: string, message
       ? `<p>${safeMessage}</p><p><a href="${absoluteLink}">Open Safina BSC Platform</a></p>`
       : `<p>${safeMessage}</p>`,
   });
+  if (error) {
+    Sentry.captureException(error, { extra: { to, subject } });
+  }
 }

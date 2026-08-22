@@ -1,12 +1,16 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 
-const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn().mockResolvedValue({ data: { id: "email-1" }, error: null }) }));
+const { sendMock, captureExceptionMock } = vi.hoisted(() => ({
+  sendMock: vi.fn().mockResolvedValue({ data: { id: "email-1" }, error: null }),
+  captureExceptionMock: vi.fn(),
+}));
 
 vi.mock("resend", () => ({
   Resend: vi.fn().mockImplementation(function MockResend() {
     return { emails: { send: sendMock } };
   }),
 }));
+vi.mock("@sentry/nextjs", () => ({ captureException: captureExceptionMock }));
 
 const { sendNotificationEmail } = await import("./email");
 
@@ -20,6 +24,7 @@ describe("sendNotificationEmail", () => {
     if (originalAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = originalAppUrl;
     sendMock.mockClear();
+    captureExceptionMock.mockClear();
   });
 
   it("no-ops without throwing when RESEND_API_KEY isn't configured", async () => {
@@ -66,5 +71,21 @@ describe("sendNotificationEmail", () => {
     const call = sendMock.mock.calls[0][0];
     expect(call.html).not.toContain("<a href=\"https://evil.example");
     expect(call.html).toContain("&lt;a href=");
+  });
+
+  it("reports an API-level send failure to Sentry instead of leaving it invisible", async () => {
+    process.env.RESEND_API_KEY = "test-key";
+    const sendError = { name: "validation_error", message: "Invalid `to` field" };
+    sendMock.mockResolvedValueOnce({ data: null, error: sendError });
+
+    await expect(sendNotificationEmail("bad@", "Subject", "Body text")).resolves.toBeUndefined();
+    expect(captureExceptionMock).toHaveBeenCalledWith(sendError, expect.anything());
+  });
+
+  it("does not report to Sentry on a successful send", async () => {
+    process.env.RESEND_API_KEY = "test-key";
+
+    await sendNotificationEmail("user@example.com", "Subject", "Body text");
+    expect(captureExceptionMock).not.toHaveBeenCalled();
   });
 });

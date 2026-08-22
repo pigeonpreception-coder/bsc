@@ -4,6 +4,7 @@ import {
   edgesCross,
   computeMapOrder,
   resolveConnections,
+  dedupeConnections,
   type MapObjective,
   type MapConnection,
 } from "./strategy-map-layout";
@@ -41,6 +42,45 @@ describe("edgesCross", () => {
 
   it("does not cross when the two edges share a source", () => {
     expect(edgesCross(0, 0, 0, 1)).toBe(false);
+  });
+});
+
+describe("dedupeConnections", () => {
+  it("drops an exact-duplicate VERTICAL connection — the bug this test guards against", () => {
+    // Regression test: the original implementation only deduped same-level
+    // (lateral) pairs, since that check was conflated with the two-node-
+    // cycle guard. A vertical connection named twice by the AI passed
+    // straight through, double-counting the source's outgoing edges and
+    // persisting a duplicate row with no DB constraint to catch it either.
+    const candidates: MapConnection[] = [
+      { from: "A1", to: "B1", type: "vertical" },
+      { from: "A1", to: "B1", type: "vertical" },
+    ];
+    expect(dedupeConnections(candidates)).toEqual([{ from: "A1", to: "B1", type: "vertical" }]);
+  });
+
+  it("drops an exact-duplicate lateral connection", () => {
+    const candidates: MapConnection[] = [
+      { from: "A1", to: "A2", type: "lateral" },
+      { from: "A1", to: "A2", type: "lateral" },
+    ];
+    expect(dedupeConnections(candidates)).toEqual([{ from: "A1", to: "A2", type: "lateral" }]);
+  });
+
+  it("collapses a two-node lateral cycle to whichever direction was seen first", () => {
+    const candidates: MapConnection[] = [
+      { from: "A1", to: "A2", type: "lateral" },
+      { from: "A2", to: "A1", type: "lateral" },
+    ];
+    expect(dedupeConnections(candidates)).toEqual([{ from: "A1", to: "A2", type: "lateral" }]);
+  });
+
+  it("keeps distinct vertical connections from the same source to different targets", () => {
+    const candidates: MapConnection[] = [
+      { from: "A1", to: "B1", type: "vertical" },
+      { from: "A1", to: "B2", type: "vertical" },
+    ];
+    expect(dedupeConnections(candidates)).toEqual(candidates);
   });
 });
 

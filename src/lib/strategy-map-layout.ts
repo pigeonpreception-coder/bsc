@@ -20,6 +20,36 @@ export function deriveConnectionType(fromLevel: number, toLevel: number): MapCon
 }
 
 /**
+ * Drops exact-duplicate connections (an LLM's tool-call output can name
+ * the same (from, to) pair twice — nothing in a JSON Schema forbids it),
+ * and collapses a two-node lateral cycle (A→B and B→A at the same level)
+ * down to whichever direction was seen first. Vertical edges can never
+ * form a two-node cycle — their direction is fixed by the two distinct
+ * levels involved — so only the exact-duplicate check applies to them.
+ */
+export function dedupeConnections(candidates: MapConnection[]): MapConnection[] {
+  const seenDirected = new Set<string>();
+  const seenLateral = new Set<string>();
+  const result: MapConnection[] = [];
+
+  for (const c of candidates) {
+    const directedKey = `${c.from}>${c.to}`;
+    if (seenDirected.has(directedKey)) continue;
+    seenDirected.add(directedKey);
+
+    if (c.type === "lateral") {
+      const undirectedKey = [c.from, c.to].sort().join("|");
+      if (seenLateral.has(undirectedKey)) continue;
+      seenLateral.add(undirectedKey);
+    }
+
+    result.push(c);
+  }
+
+  return result;
+}
+
+/**
  * Two edges between the same pair of adjacent rows cross iff their source
  * order and target order disagree. Converging targets (t1 === t2) are
  * never a crossing — two arrows landing on the same objective just meet.

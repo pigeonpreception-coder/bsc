@@ -35,6 +35,7 @@ export async function generateStrategyMap(planId: string) {
         .from("strategy_map_connections")
         .delete()
         .eq("plan_id", planId)
+        .eq("tenant_id", plan.tenant_id)
         .eq("from_objective_id", c.from)
         .eq("to_objective_id", c.to);
       if (error) throw error;

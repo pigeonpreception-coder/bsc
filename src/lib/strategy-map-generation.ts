@@ -2,7 +2,7 @@ import "server-only";
 import { createAnthropicClient, CLAUDE_MODEL, friendlyAnthropicError } from "@/lib/anthropic";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { perspectiveMapLevel } from "@/lib/scorecard";
-import { deriveConnectionType, type MapConnection } from "@/lib/strategy-map-layout";
+import { deriveConnectionType, dedupeConnections, type MapConnection } from "@/lib/strategy-map-layout";
 
 const MIN_EDGES_PER_OBJECTIVE = 1;
 const MAX_EDGES_PER_OBJECTIVE = 3;
@@ -100,13 +100,13 @@ Call the submit_strategy_map_connections tool with your answer, referencing obje
   const { connections: rawConnections } = toolUse.input as { connections: GeneratedConnection[] };
 
   // Post-hoc validation — the tool schema can't express the direction/
-  // arrow-count/no-self-loop/no-two-cycle rules by itself, same as every
-  // other AI-generation function in this codebase (see e.g.
-  // generateCorporateObjectives's per-perspective count check).
-  const connections: MapConnection[] = [];
-  const seenPairs = new Set<string>();
-  const outgoingCount = new Map<string, number>();
-
+  // arrow-count/no-self-loop rules by itself, same as every other
+  // AI-generation function in this codebase (see e.g.
+  // generateCorporateObjectives's per-perspective count check). Exact-
+  // duplicate and two-node-cycle deduplication is pure logic, extracted
+  // into strategy-map-layout.ts's dedupeConnections so it has direct unit
+  // test coverage.
+  const candidates: MapConnection[] = [];
   for (const raw of rawConnections) {
     const from = objectives[raw.from_objective_number - 1];
     const to = objectives[raw.to_objective_number - 1];
@@ -122,13 +122,13 @@ Call the submit_strategy_map_connections tool with your answer, referencing obje
         `AI proposed a connection from a level-${from.level} objective to a level-${to.level} objective, which skips or reverses a level — please try regenerating.`,
       );
     }
+    candidates.push({ from: from.id, to: to.id, type });
+  }
 
-    const pairKey = from.level === to.level ? [from.id, to.id].sort().join("|") : `${from.id}>${to.id}`;
-    if (from.level === to.level && seenPairs.has(pairKey)) continue; // two-node cycle — keep only the first direction seen
-    seenPairs.add(pairKey);
-
-    connections.push({ from: from.id, to: to.id, type });
-    outgoingCount.set(from.id, (outgoingCount.get(from.id) ?? 0) + 1);
+  const connections = dedupeConnections(candidates);
+  const outgoingCount = new Map<string, number>();
+  for (const c of connections) {
+    outgoingCount.set(c.from, (outgoingCount.get(c.from) ?? 0) + 1);
   }
 
   for (const o of objectives) {

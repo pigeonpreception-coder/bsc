@@ -4,12 +4,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { approveStrategicPlan } from "./actions";
 import { generatePlanDocumentIntro, generatePlanSection5, generatePlanDocumentClosing } from "./document-actions";
+import { generateStrategyMap } from "./strategy-map-actions";
 import { downloadStrategicPlan } from "./export-actions";
 import { CANONICAL_PERSPECTIVES } from "@/lib/scorecard";
 import { getCorporateBscView } from "@/lib/corporate-bsc-view";
 import { getOrgStructureView, type OrgStructureNode } from "@/lib/org-structure-view";
+import { getStrategyMapView } from "@/lib/strategy-map-view";
 import ActionButton from "@/components/ActionButton";
 import DownloadPlanButton from "./DownloadPlanButton";
+import StrategyMapDiagram from "./StrategyMapDiagram";
 
 type PlanSectionRow = {
   id: string;
@@ -50,6 +53,10 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   async function handleGenerateDocumentClosing() {
     "use server";
     await generatePlanDocumentClosing(id);
+  }
+  async function handleGenerateStrategyMap() {
+    "use server";
+    await generateStrategyMap(id);
   }
   async function handleDownloadPlan() {
     "use server";
@@ -101,6 +108,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
 
   const corporateBsc = await getCorporateBscView(id, plan.tenant_id);
   const orgStructure = await getOrgStructureView(plan.tenant_id);
+  const strategyMap = await getStrategyMapView(id, plan.tenant_id);
   const hasObjectives = (corporateObjectives?.length ?? 0) > 0;
   const hasIntro = planSections?.some((s) => s.section_number === "1") ?? false;
   const hasSection5 = (strategicThemes?.length ?? 0) > 0;
@@ -184,6 +192,16 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               >
                 {hasClosing ? "Regenerate Sections 6–9" : "Generate Sections 6–9"}
               </ActionButton>
+              {hasObjectives && (
+                <ActionButton
+                  action={handleGenerateStrategyMap}
+                  pendingLabel="Generating… deciding connections and laying out the map"
+                  variant="secondary"
+                  confirmMessage={strategyMap ? "Regenerate the Strategy Map? This replaces the current one." : undefined}
+                >
+                  {strategyMap ? "Regenerate Strategy Map" : "Generate Strategy Map"}
+                </ActionButton>
+              )}
             </div>
           )}
         </div>
@@ -210,6 +228,19 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {strategyMap && (
+          <div className="mt-6 rounded-md border border-gray-200 bg-gray-50 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-navy">Strategy Map</h3>
+            <p className="mt-1 text-xs text-gray-500">
+              Cause-and-effect connections between the Corporate Strategic Objectives above, ordered so no
+              connecting line crosses another.
+            </p>
+            <div className="mt-3">
+              <StrategyMapDiagram view={strategyMap} />
             </div>
           </div>
         )}

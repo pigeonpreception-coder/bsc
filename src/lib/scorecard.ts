@@ -36,6 +36,20 @@ export function perspectiveSortIndex(perspective: string): number {
 }
 
 /**
+ * Strategy-map row level (bottom to top): 0 = Learning & Growth /
+ * Organisational Capacity, 3 = Financial. This is the Kaplan-Norton
+ * causality order (capability enables process enables outcomes enables
+ * financial results) — deliberately the INVERSE of perspectiveSortIndex
+ * above, which orders Financial first for the scorecard table UI. The two
+ * numbering conventions serve different UIs; do not conflate them. Derived
+ * from perspectiveSortIndex rather than duplicating the alias table.
+ */
+export function perspectiveMapLevel(perspective: string): number | null {
+  const index = perspectiveSortIndex(perspective);
+  return index === 99 ? null : 3 - index;
+}
+
+/**
  * Buckets any perspective label (classic or GES) into one of the four
  * canonical performance-score columns. Used wherever per-perspective
  * scores get written to fixed DB columns (financial_score, etc.) rather

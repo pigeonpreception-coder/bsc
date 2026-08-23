@@ -195,26 +195,51 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 const APPROVAL_COLORS: Record<string, string> = {
-  pending_approval: "bg-amber-100 text-amber-700",
-  rejected: "bg-red-100 text-red-700",
+  submitted: "bg-amber-100 text-amber-700",
+  first_approved: "bg-blue-100 text-blue-700",
+  correction_required: "bg-red-100 text-red-700",
+  amendment_requested: "bg-purple-100 text-purple-700",
+  reopened: "bg-amber-100 text-amber-700",
 };
 
 const APPROVAL_LABELS: Record<string, string> = {
-  pending_approval: "Pending review",
-  rejected: "Rejected",
+  submitted: "Awaiting first-level review",
+  first_approved: "Awaiting final approval",
+  correction_required: "Returned for correction",
+  amendment_requested: "Amendment requested",
+  reopened: "Reopened for correction",
 };
 
-// Approved rows render nothing here — a pending/rejected value is the
-// exception worth flagging inline, not the steady state every row shows.
-export function ApprovalBadge({ status, rejectionReason }: { status: string; rejectionReason: string | null }) {
-  if (status !== "pending_approval" && status !== "rejected") return null;
+// not_submitted and finally_approved (locked) render nothing here —
+// finally_approved gets its own lock indicator instead (see LockedBadge)
+// since that state disables editing entirely rather than just flagging it.
+export function ApprovalBadge({
+  status,
+  rejectionReason,
+  rejectedLevel,
+}: {
+  status: string;
+  rejectionReason: string | null;
+  rejectedLevel: string | null;
+}) {
+  if (!(status in APPROVAL_LABELS)) return null;
+  const levelNote = status === "correction_required" && rejectedLevel ? ` (${rejectedLevel}-level)` : "";
   return (
     <span
       className={`mt-1 block max-w-[160px] whitespace-normal rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight ${APPROVAL_COLORS[status]}`}
-      title={status === "rejected" ? rejectionReason ?? undefined : undefined}
+      title={status === "correction_required" ? rejectionReason ?? undefined : undefined}
     >
       {APPROVAL_LABELS[status]}
-      {status === "rejected" && rejectionReason ? `: ${rejectionReason}` : ""}
+      {levelNote}
+      {status === "correction_required" && rejectionReason ? `: ${rejectionReason}` : ""}
+    </span>
+  );
+}
+
+export function LockedBadge() {
+  return (
+    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-700">
+      🔒 Locked — finally approved
     </span>
   );
 }

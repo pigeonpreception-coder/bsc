@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge, ApprovalBadge } from "./EditableCell";
+import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge, ApprovalBadge, LockedBadge } from "./EditableCell";
+import RequestAmendmentControl from "./RequestAmendmentControl";
 import { updateScorecardRow, addScorecardRow, deleteScorecardRow, type EditableField } from "./row-actions";
 import {
   addScorecardColumn,
@@ -39,6 +40,12 @@ export type ScorecardRow = {
   status: string;
   approval_status: string;
   rejection_reason: string | null;
+  rejected_level: string | null;
+  /** Resolved server-side (owner, or the org-hierarchy's immediate manager
+   * of the owner — see src/lib/approval-hierarchy.ts) — the client never
+   * re-derives this; it's a display hint only, the actual enforcement is
+   * server-side in updateScorecardRow. */
+  canEditActual: boolean;
 };
 
 export type CustomColumn = {
@@ -170,10 +177,19 @@ function renderFixedCell(
     case "measurement_frequency":
       return <EditableTextCell value={row.measurement_frequency} editable={canEditAll} onSave={(v) => save(row.id, "measurement_frequency", v)} />;
     case "actual":
+      if (row.approval_status === "finally_approved") {
+        return (
+          <div>
+            <span className="text-gray-700">{row.actual ?? "—"}</span>
+            <LockedBadge />
+            <RequestAmendmentControl rowId={row.id} />
+          </div>
+        );
+      }
       return (
         <div>
           <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />
-          <ApprovalBadge status={row.approval_status} rejectionReason={row.rejection_reason} />
+          <ApprovalBadge status={row.approval_status} rejectionReason={row.rejection_reason} rejectedLevel={row.rejected_level} />
         </div>
       );
     case "responsible_person":
@@ -191,8 +207,6 @@ export default function ScorecardTable({
   scorecardId,
   rows,
   canEditAll,
-  currentUserId,
-  canUpdateActual,
   teamOptions,
   customColumns = [],
   cellValues = {},
@@ -200,8 +214,6 @@ export default function ScorecardTable({
   scorecardId: string;
   rows: ScorecardRow[];
   canEditAll: boolean;
-  currentUserId: string;
-  canUpdateActual: boolean;
   teamOptions: { value: string; label: string }[];
   customColumns?: CustomColumn[];
   cellValues?: Record<string, Record<string, string>>;
@@ -280,7 +292,7 @@ export default function ScorecardTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row, i) => {
-              const canEditActual = canEditAll || (canUpdateActual && row.responsible_person === currentUserId);
+              const canEditActual = row.canEditActual;
               const isNewObjective = i === 0 || objectiveKeyOf(row) !== objectiveKeyOf(rows[i - 1]);
               const liveStatus = computeAutoStatus(row.actual, row.target, row.lower_is_better ?? false);
 

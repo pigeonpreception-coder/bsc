@@ -9,10 +9,14 @@ export type NotificationType =
   | "account_created"
   | "plan_approved"
   | "account_status_changed"
-  | "score_pending_review"
-  | "score_approved"
-  | "score_rejected"
-  | "task_assigned";
+  | "task_assigned"
+  | "score_submitted_for_review"
+  | "score_pending_final_review"
+  | "score_finally_approved"
+  | "score_returned_for_correction"
+  | "score_amendment_requested"
+  | "score_reopened"
+  | "approval_hierarchy_not_configured";
 
 export type CreateNotificationParams = {
   tenantId: string;

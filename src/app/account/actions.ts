@@ -6,6 +6,58 @@ import { writeAuditLog } from "@/lib/audit-log";
 import { checkMfaChallengeRateLimit, recordMfaChallengeAttempt } from "@/lib/rate-limit";
 import { revokeOtherSessions } from "@/app/auth/reset-password/actions";
 
+// Self-service profile fields only — tenant/role/permissions/reporting
+// hierarchy are all admin-managed (team/actions.ts, admin/actions.ts) and
+// deliberately have no self-edit path here at all.
+export async function updateProfile(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authorized");
+
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+
+  if (!fullName) throw new Error("Name is required.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ full_name: fullName, phone: phone || null })
+    .eq("id", user.id);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, {
+    tenant_id: user.tenant_id,
+    user_id: user.id,
+    action: "update_profile",
+    resource_type: "user",
+    resource_id: user.id,
+    old_value: { full_name: user.full_name },
+    new_value: { full_name: fullName, phone: phone || null },
+  });
+}
+
+export async function updateNotificationPreference(enabled: boolean): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authorized");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ email_notifications_enabled: enabled })
+    .eq("id", user.id);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, {
+    tenant_id: user.tenant_id,
+    user_id: user.id,
+    action: "update_notification_preference",
+    resource_type: "user",
+    resource_id: user.id,
+    old_value: null,
+    new_value: { email_notifications_enabled: enabled },
+  });
+}
+
 export async function enrollMfaFactor(): Promise<{ factorId: string; qrCode: string; secret: string }> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authorized");

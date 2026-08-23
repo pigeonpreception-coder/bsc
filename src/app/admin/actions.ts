@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount } from "@/lib/user-invite";
+import { createNotification } from "@/lib/notifications";
 import { writeAuditLog } from "@/lib/audit-log";
 import { LICENSE_TIER_DEFAULT_SEATS, canReduceSeatsTo, type LicenseTier } from "@/lib/licensing";
 
@@ -135,6 +136,52 @@ export async function updateTenantSeats(tenantId: string, maxUsers: number, isUn
   });
 
   revalidatePath(`/admin/tenants/${tenantId}`);
+}
+
+const STATUS_MESSAGES: Record<"suspended" | "deactivated", string> = {
+  suspended: "Your account has been suspended. Contact your administrator for details.",
+  deactivated: "Your account has been deactivated. Contact your administrator for details.",
+};
+
+// Platform-wide authority — unlike setTeamMemberStatus (company_admin/team.ts,
+// scoped to manager/staff/viewer within their own tenant), a super_admin can
+// act on any user in any tenant, including a company_admin row.
+export async function setUserStatus(userId: string, status: "active" | "suspended" | "deactivated") {
+  const currentUser = await requireSuperAdmin();
+  if (userId === currentUser.id) throw new Error("You can't change your own account status.");
+  const admin = createAdminClient();
+
+  const { data: target } = await admin.from("users").select("email, tenant_id, status").eq("id", userId).single();
+  if (!target) throw new Error("User not found");
+  // A super_admin's own tenant_id is always null (DB-enforced) — this tool
+  // is scoped to managing tenant-scoped users from a tenant's own detail
+  // page, not one platform administrator acting on another's status.
+  if (!target.tenant_id) throw new Error("Not authorized");
+
+  const { error } = await admin.from("users").update({ status }).eq("id", userId);
+  if (error) throw error;
+
+  await writeAuditLog(admin, {
+    tenant_id: target.tenant_id,
+    user_id: currentUser.id,
+    action: "set_user_status",
+    resource_type: "user",
+    resource_id: userId,
+    old_value: { status: target.status },
+    new_value: { status },
+  });
+
+  if (status === "suspended" || status === "deactivated") {
+    await createNotification(admin, {
+      tenantId: target.tenant_id,
+      userId,
+      type: "account_status_changed",
+      message: STATUS_MESSAGES[status],
+      email: target.email ? { to: target.email, subject: "Your Safina account status has changed" } : null,
+    });
+  }
+
+  revalidatePath(`/admin/tenants/${target.tenant_id}`);
 }
 
 export async function createCompanyAdmin(formData: FormData) {

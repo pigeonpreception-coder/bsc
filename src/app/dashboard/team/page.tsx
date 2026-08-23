@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import UserStatusControl from "@/components/UserStatusControl";
 import AddTeamMemberForm, { type UnfilledPosition } from "./AddTeamMemberForm";
 import AssignPositionForm from "./AssignPositionForm";
+import { setTeamMemberStatus } from "./actions";
 
 export default async function TeamPage() {
   const user = await getCurrentUser();
@@ -13,7 +15,7 @@ export default async function TeamPage() {
 
   const { data: members } = await supabase
     .from("users")
-    .select("id, email, full_name, role, department")
+    .select("id, email, full_name, role, department, status")
     .eq("tenant_id", user.tenant_id)
     .order("created_at", { ascending: true });
 
@@ -69,6 +71,9 @@ export default async function TeamPage() {
                   <span className="rounded bg-navy/10 px-2 py-0.5 text-xs capitalize text-navy">
                     {m.role.replace("_", " ")}
                   </span>
+                  {m.id !== user.id && ["manager", "staff", "viewer"].includes(m.role) && (
+                    <UserStatusControl userId={m.id} currentStatus={m.status} updateStatus={setTeamMemberStatus} />
+                  )}
                   <AssignPositionForm userId={m.id} currentPositionId={currentPositionId} options={options} />
                 </span>
               </li>

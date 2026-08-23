@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import MfaEnrollmentPanel from "./MfaEnrollmentPanel";
+import ProfileForm from "./ProfileForm";
 
 export default async function AccountPage({
   searchParams,
@@ -17,11 +18,21 @@ export default async function AccountPage({
   const { data } = await supabase.auth.mfa.listFactors();
   const totpFactors = (data?.all ?? []).filter((f) => f.factor_type === "totp");
 
+  // Kept off the shared CurrentUser type (used everywhere getCurrentUser()
+  // is called) since these fields only matter on this one page — same
+  // "fetch what this page needs separately" pattern already used for MFA
+  // factors above.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("phone, email_notifications_enabled")
+    .eq("id", user.id)
+    .single();
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-navy">Account &amp; Security</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your two-factor authentication.</p>
+        <p className="mt-1 text-sm text-gray-500">Manage your profile and two-factor authentication.</p>
       </div>
 
       {mfa === "required" && (
@@ -30,6 +41,20 @@ export default async function AccountPage({
           continue.
         </div>
       )}
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-navy">Profile</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          Your tenant, role, and organisational position are managed by your administrator — contact them if these
+          need to change.
+        </p>
+        <ProfileForm
+          fullName={user.full_name ?? ""}
+          phone={profile?.phone ?? ""}
+          email={user.email}
+          emailNotificationsEnabled={profile?.email_notifications_enabled ?? true}
+        />
+      </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-navy">Two-factor authentication</h2>

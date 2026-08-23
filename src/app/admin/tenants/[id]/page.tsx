@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getEntitlement } from "@/lib/licensing";
+import UserStatusControl from "@/components/UserStatusControl";
 import LicenseStatusForm from "./LicenseStatusForm";
 import SeatLimitForm from "./SeatLimitForm";
 import CreateCompanyAdminForm from "./CreateCompanyAdminForm";
 import ResetMfaButton from "./ResetMfaButton";
+import { setUserStatus } from "@/app/admin/actions";
 
 export default async function TenantDetailPage({
   params,
@@ -19,7 +21,7 @@ export default async function TenantDetailPage({
 
   const { data: users } = await supabase
     .from("users")
-    .select("id, email, full_name, role, created_at")
+    .select("id, email, full_name, role, status, created_at")
     .eq("tenant_id", id)
     .order("created_at", { ascending: true });
 
@@ -73,6 +75,7 @@ export default async function TenantDetailPage({
                 <span className="rounded bg-gray-100 px-2 py-0.5 text-xs capitalize text-gray-600">
                   {u.role.replace("_", " ")}
                 </span>
+                <UserStatusControl userId={u.id} currentStatus={u.status} updateStatus={setUserStatus} />
                 <ResetMfaButton userId={u.id} />
               </span>
             </li>

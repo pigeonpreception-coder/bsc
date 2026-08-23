@@ -11,6 +11,7 @@ const {
   checkMfaChallengeRateLimitMock,
   recordMfaChallengeAttemptMock,
   revokeOtherSessionsMock,
+  updateUsersMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
   enrollMock: vi.fn(),
@@ -22,6 +23,7 @@ const {
   checkMfaChallengeRateLimitMock: vi.fn(),
   recordMfaChallengeAttemptMock: vi.fn(),
   revokeOtherSessionsMock: vi.fn(),
+  updateUsersMock: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser: getCurrentUserMock }));
@@ -36,6 +38,10 @@ vi.mock("@/lib/supabase/server", () => ({
         listFactors: listFactorsMock,
       },
     },
+    from: (table: string) => {
+      if (table !== "users") throw new Error(`Unexpected table "${table}" in this test's fake client`);
+      return { update: (values: Record<string, unknown>) => ({ eq: (_col: string, id: string) => updateUsersMock(values, id) }) };
+    },
   }),
 }));
 vi.mock("@/lib/audit-log", () => ({ writeAuditLog: writeAuditLogMock }));
@@ -45,7 +51,8 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 vi.mock("@/app/auth/reset-password/actions", () => ({ revokeOtherSessions: revokeOtherSessionsMock }));
 
-const { enrollMfaFactor, verifyMfaEnrollment, unenrollMfaFactor } = await import("./actions");
+const { enrollMfaFactor, verifyMfaEnrollment, unenrollMfaFactor, updateProfile, updateNotificationPreference } =
+  await import("./actions");
 
 const staff = { id: "user-1", email: "a@b.com", full_name: "A B", role: "staff" as const, tenant_id: "tenant-1" };
 const companyAdmin = {
@@ -68,6 +75,7 @@ describe("MFA account actions", () => {
     checkMfaChallengeRateLimitMock.mockReset();
     recordMfaChallengeAttemptMock.mockReset();
     revokeOtherSessionsMock.mockReset();
+    updateUsersMock.mockReset().mockResolvedValue({ error: null });
     checkMfaChallengeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ data: { session: { access_token: "token-abc" } } });
   });
@@ -182,5 +190,75 @@ describe("MFA account actions", () => {
       await unenrollMfaFactor("factor-1");
       expect(unenrollMock).toHaveBeenCalledWith({ factorId: "factor-1" });
     });
+  });
+});
+
+describe("updateProfile", () => {
+  beforeEach(() => {
+    getCurrentUserMock.mockReset();
+    writeAuditLogMock.mockReset();
+    updateUsersMock.mockReset().mockResolvedValue({ error: null });
+  });
+
+  function formDataFor(fields: Record<string, string>): FormData {
+    const fd = new FormData();
+    for (const [key, value] of Object.entries(fields)) fd.set(key, value);
+    return fd;
+  }
+
+  it("rejects an unauthenticated caller", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    await expect(updateProfile(formDataFor({ full_name: "New Name", phone: "" }))).rejects.toThrow("Not authorized");
+    expect(updateUsersMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an empty name", async () => {
+    getCurrentUserMock.mockResolvedValue(staff);
+    await expect(updateProfile(formDataFor({ full_name: "  ", phone: "" }))).rejects.toThrow("Name is required");
+    expect(updateUsersMock).not.toHaveBeenCalled();
+  });
+
+  it("updates only the caller's own row, and audit-logs the change", async () => {
+    getCurrentUserMock.mockResolvedValue(staff);
+
+    await updateProfile(formDataFor({ full_name: "New Name", phone: "+1-555-0100" }));
+
+    expect(updateUsersMock).toHaveBeenCalledWith({ full_name: "New Name", phone: "+1-555-0100" }, "user-1");
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: "update_profile", user_id: "user-1" }),
+    );
+  });
+
+  it("stores an empty phone as null rather than an empty string", async () => {
+    getCurrentUserMock.mockResolvedValue(staff);
+    await updateProfile(formDataFor({ full_name: "New Name", phone: "" }));
+    expect(updateUsersMock).toHaveBeenCalledWith({ full_name: "New Name", phone: null }, "user-1");
+  });
+});
+
+describe("updateNotificationPreference", () => {
+  beforeEach(() => {
+    getCurrentUserMock.mockReset();
+    writeAuditLogMock.mockReset();
+    updateUsersMock.mockReset().mockResolvedValue({ error: null });
+  });
+
+  it("rejects an unauthenticated caller", async () => {
+    getCurrentUserMock.mockResolvedValue(null);
+    await expect(updateNotificationPreference(false)).rejects.toThrow("Not authorized");
+    expect(updateUsersMock).not.toHaveBeenCalled();
+  });
+
+  it("updates the caller's own preference and audit-logs it", async () => {
+    getCurrentUserMock.mockResolvedValue(staff);
+
+    await updateNotificationPreference(false);
+
+    expect(updateUsersMock).toHaveBeenCalledWith({ email_notifications_enabled: false }, "user-1");
+    expect(writeAuditLogMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: "update_notification_preference", user_id: "user-1" }),
+    );
   });
 });

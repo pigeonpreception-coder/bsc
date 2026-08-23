@@ -10,10 +10,22 @@ vi.mock("@sentry/nextjs", () => ({ captureException: captureExceptionMock }));
 
 const { createNotification } = await import("./notifications");
 
-function fakeClient(insertResult: { error: unknown } = { error: null }) {
-  const insert = vi.fn().mockResolvedValue(insertResult);
-  const from = vi.fn().mockReturnValue({ insert });
-  return { client: { from } as unknown as SupabaseClient, from, insert };
+function fakeClient(
+  options: { insertError?: unknown; emailNotificationsEnabled?: boolean | null } = {},
+) {
+  const insert = vi.fn().mockResolvedValue({ error: options.insertError ?? null });
+  const maybeSingle = vi.fn().mockResolvedValue({
+    data: options.emailNotificationsEnabled === null ? null : { email_notifications_enabled: options.emailNotificationsEnabled ?? true },
+    error: null,
+  });
+
+  const from = vi.fn().mockImplementation((table: string) => {
+    if (table === "notifications") return { insert };
+    if (table === "users") return { select: () => ({ eq: () => ({ maybeSingle }) }) };
+    throw new Error(`Unexpected table "${table}" in this test's fake client`);
+  });
+
+  return { client: { from } as unknown as SupabaseClient, from, insert, maybeSingle };
 }
 
 describe("createNotification", () => {
@@ -91,7 +103,7 @@ describe("createNotification", () => {
 
   it("reports a failed insert to Sentry instead of leaving it invisible", async () => {
     const dbError = { message: "constraint violation" };
-    const { client } = fakeClient({ error: dbError });
+    const { client } = fakeClient({ insertError: dbError });
 
     await expect(
       createNotification(client, {
@@ -121,5 +133,51 @@ describe("createNotification", () => {
     ).resolves.toBeUndefined();
 
     expect(captureExceptionMock).toHaveBeenCalledWith(sendError, expect.anything());
+  });
+
+  describe("email-notification preference", () => {
+    it("skips the email (but still writes the in-app row) when the recipient has opted out", async () => {
+      const { client, insert } = fakeClient({ emailNotificationsEnabled: false });
+
+      await createNotification(client, {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        type: "position_assigned",
+        message: "You've been assigned to Finance.",
+        email: { to: "user@example.com", subject: "Subject" },
+      });
+
+      expect(insert).toHaveBeenCalled();
+      expect(sendNotificationEmailMock).not.toHaveBeenCalled();
+    });
+
+    it("sends when the recipient row can't be found, rather than silently dropping the notification", async () => {
+      const { client } = fakeClient({ emailNotificationsEnabled: null });
+
+      await createNotification(client, {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        type: "position_assigned",
+        message: "You've been assigned to Finance.",
+        email: { to: "user@example.com", subject: "Subject" },
+      });
+
+      expect(sendNotificationEmailMock).toHaveBeenCalled();
+    });
+
+    it("bypasses the opt-out for a security-relevant account_status_changed notification", async () => {
+      const { client, maybeSingle } = fakeClient({ emailNotificationsEnabled: false });
+
+      await createNotification(client, {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        type: "account_status_changed",
+        message: "Your account has been suspended.",
+        email: { to: "user@example.com", subject: "Account status changed" },
+      });
+
+      expect(maybeSingle).not.toHaveBeenCalled();
+      expect(sendNotificationEmailMock).toHaveBeenCalled();
+    });
   });
 });

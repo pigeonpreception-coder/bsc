@@ -83,6 +83,63 @@ export async function addTeamMember(formData: FormData) {
   revalidatePath("/dashboard/team");
 }
 
+const STATUS_MESSAGES: Record<"suspended" | "deactivated", string> = {
+  suspended: "Your account has been suspended. Contact your administrator for details.",
+  deactivated: "Your account has been deactivated. Contact your administrator for details.",
+};
+
+// A company_admin can only manage status for the same role set they can
+// already invite/assign — manager/staff/viewer. Deliberately cannot touch
+// another company_admin (super_admin-only, via admin/actions.ts) or
+// themselves (self-lockout).
+export async function setTeamMemberStatus(userId: string, status: "active" | "suspended" | "deactivated") {
+  const user = await getCurrentUser();
+  if (!user || user.role !== "company_admin" || !user.tenant_id) {
+    throw new Error("Not authorized");
+  }
+  if (userId === user.id) throw new Error("You can't change your own account status.");
+
+  const admin = createAdminClient();
+
+  const { data: target } = await admin
+    .from("users")
+    .select("email, role, status")
+    .eq("id", userId)
+    .eq("tenant_id", user.tenant_id)
+    .maybeSingle();
+  if (!target || !["manager", "staff", "viewer"].includes(target.role)) {
+    throw new Error("Not authorized");
+  }
+
+  const { error } = await admin.from("users").update({ status }).eq("id", userId).eq("tenant_id", user.tenant_id);
+  if (error) throw error;
+
+  await writeAuditLog(admin, {
+    tenant_id: user.tenant_id,
+    user_id: user.id,
+    action: "set_user_status",
+    resource_type: "user",
+    resource_id: userId,
+    old_value: { status: target.status },
+    new_value: { status },
+  });
+
+  if (status === "suspended" || status === "deactivated") {
+    // Security-relevant — bypasses the recipient's own email-notification
+    // preference (see notifications.ts) since they need to know regardless,
+    // and can't see the in-app bell once blocked from logging in.
+    await createNotification(admin, {
+      tenantId: user.tenant_id,
+      userId,
+      type: "account_status_changed",
+      message: STATUS_MESSAGES[status],
+      email: target.email ? { to: target.email, subject: "Your Safina account status has changed" } : null,
+    });
+  }
+
+  revalidatePath("/dashboard/team");
+}
+
 // Links (or unlinks, when positionId is empty) an existing team member to an
 // org position. Clears any other position this user currently holds first,
 // so a user is never linked to more than one position at a time.

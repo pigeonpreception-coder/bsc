@@ -5,12 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { listPendingApprovalsForUser, type OrgPositionLite } from "@/lib/approval-hierarchy";
 import ApprovalControls from "./ApprovalControls";
 
-const PENDING_STATUSES = ["submitted", "first_approved", "amendment_requested"];
+const PENDING_STATUSES = ["pending_manager_review", "pending_final_review"];
 
 const SECTION_META = {
   first: { title: "Awaiting your first-level review", empty: "Nothing waiting on your first-level review." },
   final: { title: "Awaiting your final approval", empty: "Nothing waiting on your final approval." },
-  reopen: { title: "Amendment requests awaiting your authorization", empty: "No amendment requests waiting on you." },
 } as const;
 
 export default async function ApprovalsPage() {
@@ -20,50 +19,45 @@ export default async function ApprovalsPage() {
 
   const supabase = await createClient();
 
-  const [{ data: rows }, { data: positions }] = await Promise.all([
+  const [{ data: scorecards }, { data: positions }] = await Promise.all([
     supabase
-      .from("scorecard_rows")
-      .select("id, scorecard_id, kpi, actual, unit, responsible_person, approval_status, amendment_reason")
+      .from("scorecards")
+      .select("id, name, scorecard_type, department_name, owner_user_id, workflow_status")
       .eq("tenant_id", user.tenant_id)
-      .in("approval_status", PENDING_STATUSES)
+      .in("workflow_status", PENDING_STATUSES)
       .order("id", { ascending: true }),
     supabase.from("org_positions").select("id, user_id, reports_to_id, position_type").eq("tenant_id", user.tenant_id),
   ]);
 
-  const allRows = rows ?? [];
-  // Score-approval authority is entirely position-based (see
-  // src/lib/approval-hierarchy.ts) — this page shows only the rows the API
+  const allScorecards = scorecards ?? [];
+  // Approval authority is entirely position-based (see
+  // src/lib/approval-hierarchy.ts) — this page shows only the BSCs the API
   // would actually accept from this specific user, not a role-gated view.
-  const entries = listPendingApprovalsForUser((positions ?? []) as OrgPositionLite[], allRows, user.id);
-  const rowById = new Map(allRows.map((r) => [r.id, r]));
+  const entries = listPendingApprovalsForUser(
+    (positions ?? []) as OrgPositionLite[],
+    allScorecards.map((s) => ({ id: s.id, ownerId: s.owner_user_id, workflowStatus: s.workflow_status })),
+    user.id,
+  );
+  const scorecardById = new Map(allScorecards.map((s) => [s.id, s]));
 
-  const scorecardIds = [...new Set(allRows.map((r) => r.scorecard_id))];
-  const submitterIds = [...new Set(allRows.map((r) => r.responsible_person).filter((id): id is string => Boolean(id)))];
+  const ownerIds = [...new Set(allScorecards.map((s) => s.owner_user_id).filter((id): id is string => Boolean(id)))];
+  const { data: owners } = ownerIds.length
+    ? await supabase.from("users").select("id, full_name, email").in("id", ownerIds)
+    : { data: [] as { id: string; full_name: string | null; email: string }[] };
+  const ownerNameById = new Map((owners ?? []).map((o) => [o.id, o.full_name || o.email]));
 
-  const [{ data: scorecards }, { data: submitters }] = await Promise.all([
-    scorecardIds.length
-      ? supabase.from("scorecards").select("id, name").in("id", scorecardIds)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-    submitterIds.length
-      ? supabase.from("users").select("id, full_name, email").in("id", submitterIds)
-      : Promise.resolve({ data: [] as { id: string; full_name: string | null; email: string }[] }),
-  ]);
-
-  const scorecardNameById = new Map((scorecards ?? []).map((s) => [s.id, s.name]));
-  const submitterById = new Map((submitters ?? []).map((s) => [s.id, s.full_name || s.email]));
-
-  const byLevel = { first: entries.filter((e) => e.level === "first"), final: entries.filter((e) => e.level === "final"), reopen: entries.filter((e) => e.level === "reopen") };
+  const byLevel = { first: entries.filter((e) => e.level === "first"), final: entries.filter((e) => e.level === "final") };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-navy">Score Approvals</h1>
+        <h1 className="text-xl font-semibold text-navy">BSC Approvals</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Approval follows your organization&apos;s reporting hierarchy — you&apos;ll only see items you&apos;re authorized to act on.
+          Approval follows your organization&apos;s reporting hierarchy — you&apos;ll only see BSCs you&apos;re authorized to act on.
         </p>
       </div>
 
-      {(["first", "final", "reopen"] as const).map((level) => {
+      {(["first", "final"] as const).map((level) => {
         const meta = SECTION_META[level];
         const items = byLevel[level];
         return (
@@ -73,29 +67,21 @@ export default async function ApprovalsPage() {
               <p className="p-6 text-sm text-gray-400">{meta.empty}</p>
             ) : (
               <ul className="divide-y divide-gray-100">
-                {items.map(({ rowId }) => {
-                  const row = rowById.get(rowId);
-                  if (!row) return null;
+                {items.map(({ itemId }) => {
+                  const scorecard = scorecardById.get(itemId);
+                  if (!scorecard) return null;
                   return (
-                    <li key={rowId} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <li key={itemId} className="flex flex-wrap items-center justify-between gap-3 p-4">
                       <div>
-                        <Link href={`/dashboard/scorecards/${row.scorecard_id}`} className="text-sm font-medium text-navy hover:underline">
-                          {scorecardNameById.get(row.scorecard_id) ?? "Scorecard"}
+                        <Link href={`/dashboard/scorecards/${scorecard.id}`} className="text-sm font-medium text-navy hover:underline">
+                          {scorecard.name}
                         </Link>
-                        <p className="mt-0.5 text-sm text-gray-700">{row.kpi}</p>
                         <p className="mt-0.5 text-xs text-gray-500">
-                          {level === "reopen" ? (
-                            <>Amendment reason: {row.amendment_reason ?? "—"}</>
-                          ) : (
-                            <>
-                              Submitted value: <span className="font-semibold text-gray-700">{row.actual ?? "—"}</span>
-                              {row.unit ? ` ${row.unit}` : ""}
-                            </>
-                          )}
-                          {row.responsible_person && ` · owner: ${submitterById.get(row.responsible_person) ?? "Unknown"}`}
+                          {scorecard.department_name ? `${scorecard.department_name} · ` : ""}
+                          owner: {scorecard.owner_user_id ? ownerNameById.get(scorecard.owner_user_id) ?? "Unknown" : "—"}
                         </p>
                       </div>
-                      <ApprovalControls rowId={row.id} kind={level} />
+                      <ApprovalControls scorecardId={scorecard.id} level={level} />
                     </li>
                   );
                 })}

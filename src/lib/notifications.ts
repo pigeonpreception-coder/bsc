@@ -10,12 +10,11 @@ export type NotificationType =
   | "plan_approved"
   | "account_status_changed"
   | "task_assigned"
-  | "score_submitted_for_review"
-  | "score_pending_final_review"
-  | "score_finally_approved"
-  | "score_returned_for_correction"
-  | "score_amendment_requested"
-  | "score_reopened"
+  | "bsc_pending_manager_review"
+  | "bsc_pending_final_review"
+  | "bsc_finally_approved"
+  | "bsc_returned_for_correction"
+  | "bsc_unlocked"
   | "approval_hierarchy_not_configured";
 
 export type CreateNotificationParams = {

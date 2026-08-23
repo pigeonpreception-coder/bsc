@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveApprovalChainFromPositions, type OrgPositionLite } from "@/lib/approval-hierarchy";
 import ScorecardTable from "./ScorecardTable";
+import WorkflowPanel from "./WorkflowPanel";
 
 export default async function ScorecardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -41,17 +42,22 @@ export default async function ScorecardDetailPage({ params }: { params: Promise<
   const teamOptions = (teamMembers ?? []).map((m) => ({ value: m.id, label: m.full_name || m.email }));
   const canEditAll = user.role === "company_admin";
 
-  // Score-editing authority follows the org hierarchy, not the role or the
-  // company_admin flag — resolved once per row against the tenant's org
-  // chart (see src/lib/approval-hierarchy.ts). An unowned row (no
-  // responsible_person) has no hierarchy to derive authority from, so it
-  // stays company_admin-editable until someone assigns an owner.
-  const canEditActualForRow = (row: { responsible_person: string | null }): boolean => {
-    if (row.responsible_person === user.id) return true;
-    if (!row.responsible_person) return canEditAll;
-    const chain = resolveApprovalChainFromPositions((positions ?? []) as OrgPositionLite[], row.responsible_person);
-    return chain.firstApproverId === user.id;
-  };
+  // The whole BSC shares one owner (scorecards.owner_user_id) and moves
+  // through the review/approval workflow as a unit — the hierarchy chain is
+  // resolved once here, not per row (see src/lib/approval-hierarchy.ts).
+  const chain = scorecard.owner_user_id
+    ? resolveApprovalChainFromPositions((positions ?? []) as OrgPositionLite[], scorecard.owner_user_id)
+    : null;
+  const isOwner = scorecard.owner_user_id === user.id;
+  const isFirstApprover = !!chain && !chain.blockedReason && chain.firstApproverId === user.id;
+  const isFinalApprover = !!chain && !chain.blockedReason && chain.finalApproverId === user.id;
+
+  const canEditActual = (() => {
+    if (scorecard.workflow_status === "locked") return false;
+    if (scorecard.workflow_status === "owner_editing") return scorecard.owner_user_id ? isOwner : canEditAll;
+    if (scorecard.workflow_status === "pending_manager_review") return isFirstApprover;
+    return false; // pending_final_review — division head reviews, doesn't edit
+  })();
 
   // Build cell values lookup: { rowId: { columnId: value } }
   const cellValuesMap: Record<string, Record<string, string>> = {};
@@ -67,9 +73,20 @@ export default async function ScorecardDetailPage({ params }: { params: Promise<
         <p className="text-sm capitalize text-gray-500">{scorecard.scorecard_type} scorecard</p>
       </div>
 
+      <WorkflowPanel
+        scorecardId={id}
+        workflowStatus={scorecard.workflow_status}
+        version={`${scorecard.version_major}.${scorecard.version_minor}`}
+        isOwner={isOwner}
+        isFirstApprover={isFirstApprover}
+        isFinalApprover={isFinalApprover}
+        isCompanyAdmin={user.role === "company_admin"}
+        rejection={scorecard.rejected_level ? { level: scorecard.rejected_level, reason: scorecard.rejection_reason ?? "" } : null}
+      />
+
       <ScorecardTable
         scorecardId={id}
-        rows={(rows ?? []).map((r) => ({ ...r, canEditActual: canEditActualForRow(r) }))}
+        rows={(rows ?? []).map((r) => ({ ...r, canEditActual }))}
         canEditAll={canEditAll}
         teamOptions={teamOptions}
         customColumns={(customColumns ?? []).map((c) => ({

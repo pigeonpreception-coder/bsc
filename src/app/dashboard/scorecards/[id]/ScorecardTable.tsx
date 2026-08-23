@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge, ApprovalBadge, LockedBadge } from "./EditableCell";
-import RequestAmendmentControl from "./RequestAmendmentControl";
+import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge } from "./EditableCell";
 import { updateScorecardRow, addScorecardRow, deleteScorecardRow, type EditableField } from "./row-actions";
 import {
   addScorecardColumn,
@@ -38,13 +37,10 @@ export type ScorecardRow = {
   responsible_person: string | null;
   lower_is_better: boolean | null;
   status: string;
-  approval_status: string;
-  rejection_reason: string | null;
-  rejected_level: string | null;
-  /** Resolved server-side (owner, or the org-hierarchy's immediate manager
-   * of the owner — see src/lib/approval-hierarchy.ts) — the client never
-   * re-derives this; it's a display hint only, the actual enforcement is
-   * server-side in updateScorecardRow. */
+  /** Resolved server-side from the parent scorecard's workflow_status and
+   * the org hierarchy (see src/lib/approval-hierarchy.ts) — the client
+   * never re-derives this; it's a display hint only, the actual enforcement
+   * is server-side in updateScorecardRow. */
   canEditActual: boolean;
 };
 
@@ -177,21 +173,11 @@ function renderFixedCell(
     case "measurement_frequency":
       return <EditableTextCell value={row.measurement_frequency} editable={canEditAll} onSave={(v) => save(row.id, "measurement_frequency", v)} />;
     case "actual":
-      if (row.approval_status === "finally_approved") {
-        return (
-          <div>
-            <span className="text-gray-700">{row.actual ?? "—"}</span>
-            <LockedBadge />
-            <RequestAmendmentControl rowId={row.id} />
-          </div>
-        );
-      }
-      return (
-        <div>
-          <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />
-          <ApprovalBadge status={row.approval_status} rejectionReason={row.rejection_reason} rejectedLevel={row.rejected_level} />
-        </div>
-      );
+      // Whether this cell is editable at all is resolved server-side from
+      // the parent scorecard's workflow_status (see WorkflowPanel.tsx above
+      // the table for the BSC-wide status banner and Agree/Approve/Unlock
+      // controls) — row.canEditActual already reflects locked/wrong-stage.
+      return <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />;
     case "responsible_person":
       return <EditableSelectCell value={row.responsible_person} editable={canEditAll} onSave={(v) => save(row.id, "responsible_person", v)} options={teamOptions} />;
     case "status":

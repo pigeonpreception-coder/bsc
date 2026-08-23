@@ -90,38 +90,32 @@ describe("resolveApprovalChainFromPositions", () => {
 });
 
 describe("listPendingApprovalsForUser", () => {
-  const rows = [
-    { id: "row-1", responsible_person: "staff-user", approval_status: "submitted" },
-    { id: "row-2", responsible_person: "staff-user", approval_status: "first_approved" },
-    { id: "row-3", responsible_person: null, approval_status: "submitted" },
-    { id: "row-4", responsible_person: "staff-user", approval_status: "not_submitted" },
+  const items = [
+    { id: "sc-1", ownerId: "staff-user", workflowStatus: "pending_manager_review" },
+    { id: "sc-2", ownerId: "staff-user", workflowStatus: "pending_final_review" },
+    { id: "sc-3", ownerId: null, workflowStatus: "pending_manager_review" },
+    { id: "sc-4", ownerId: "staff-user", workflowStatus: "owner_editing" },
   ];
 
-  it("gives the first approver only the rows currently submitted", () => {
-    const entries = listPendingApprovalsForUser(fullTree, rows, "supervisor-user");
-    expect(entries).toEqual([{ rowId: "row-1", level: "first" }]);
+  it("gives the first approver only the scorecards currently pending manager review", () => {
+    const entries = listPendingApprovalsForUser(fullTree, items, "supervisor-user");
+    expect(entries).toEqual([{ itemId: "sc-1", level: "first" }]);
   });
 
-  it("gives the final approver only the rows currently first_approved", () => {
-    const entries = listPendingApprovalsForUser(fullTree, rows, "coo-user");
-    expect(entries).toEqual([{ rowId: "row-2", level: "final" }]);
+  it("gives the final approver only the scorecards currently pending final review", () => {
+    const entries = listPendingApprovalsForUser(fullTree, items, "coo-user");
+    expect(entries).toEqual([{ itemId: "sc-2", level: "final" }]);
   });
 
   it("gives an unrelated user nothing", () => {
-    const entries = listPendingApprovalsForUser(fullTree, rows, "someone-else");
+    const entries = listPendingApprovalsForUser(fullTree, items, "someone-else");
     expect(entries).toEqual([]);
   });
 
-  it("gives the final approver a 'reopen' entry for amendment_requested rows", () => {
-    const amendmentRow = { id: "row-6", responsible_person: "staff-user", approval_status: "amendment_requested" };
-    const entries = listPendingApprovalsForUser(fullTree, [...rows, amendmentRow], "coo-user");
-    expect(entries).toContainEqual({ rowId: "row-6", level: "reopen" });
-  });
-
-  it("skips rows with no owner and rows whose chain can't be resolved", () => {
-    const orphan = { id: "row-5", responsible_person: "nobody", approval_status: "submitted" };
-    const entries = listPendingApprovalsForUser(fullTree, [...rows, orphan], "supervisor-user");
-    expect(entries.find((e) => e.rowId === "row-5")).toBeUndefined();
-    expect(entries.find((e) => e.rowId === "row-3")).toBeUndefined();
+  it("skips items with no owner and items whose chain can't be resolved", () => {
+    const orphan = { id: "sc-5", ownerId: "nobody", workflowStatus: "pending_manager_review" };
+    const entries = listPendingApprovalsForUser(fullTree, [...items, orphan], "supervisor-user");
+    expect(entries.find((e) => e.itemId === "sc-5")).toBeUndefined();
+    expect(entries.find((e) => e.itemId === "sc-3")).toBeUndefined();
   });
 });

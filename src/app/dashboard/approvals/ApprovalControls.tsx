@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { submitFirstApproval, submitFinalApproval, reopenScore } from "@/app/dashboard/scorecards/[id]/row-actions";
+import { submitManagerFirstApproval, submitDivisionHeadFinalApproval } from "@/app/dashboard/scorecards/[id]/workflow-actions";
 
-type Kind = "first" | "final" | "reopen";
+type Level = "first" | "final";
 
-const ACTION_BY_KIND = {
-  first: submitFirstApproval,
-  final: submitFinalApproval,
+const ACTION_BY_LEVEL = {
+  first: submitManagerFirstApproval,
+  final: submitDivisionHeadFinalApproval,
 } as const;
 
-export default function ApprovalControls({ rowId, kind }: { rowId: string; kind: Kind }) {
+export default function ApprovalControls({ scorecardId, level }: { scorecardId: string; level: Level }) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -20,11 +20,7 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
     setError(null);
     startTransition(async () => {
       try {
-        if (kind === "reopen") {
-          await reopenScore(rowId, approve, approve ? undefined : reason);
-        } else {
-          await ACTION_BY_KIND[kind](rowId, approve ? "approved" : "rejected", approve ? undefined : reason);
-        }
+        await ACTION_BY_LEVEL[level](scorecardId, approve ? "approved" : "rejected", approve ? undefined : reason);
         setRejecting(false);
         setReason("");
       } catch (err) {
@@ -33,9 +29,6 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
     });
   };
 
-  const rejectLabel = kind === "reopen" ? "Deny" : "Return for correction";
-  const approveLabel = kind === "reopen" ? "Reopen" : "Approve";
-
   if (rejecting) {
     return (
       <div className="flex flex-col gap-1.5">
@@ -43,7 +36,7 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
           autoFocus
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder={kind === "reopen" ? "Reason for denying this amendment…" : "Reason for returning this for correction…"}
+          placeholder="Reason for returning this for correction…"
           rows={2}
           className="w-56 rounded border border-gray-300 px-2 py-1 text-xs focus:border-gold focus:outline-none"
         />
@@ -54,7 +47,7 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
             onClick={() => decide(false)}
             className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
           >
-            {isPending ? "Sending…" : `Confirm — ${rejectLabel.toLowerCase()}`}
+            {isPending ? "Sending…" : "Confirm — return for correction"}
           </button>
           <button
             type="button"
@@ -83,7 +76,7 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
           onClick={() => decide(true)}
           className="rounded bg-navy px-3 py-1 text-xs font-semibold text-white hover:bg-navy-light disabled:opacity-50"
         >
-          {isPending ? "Saving…" : approveLabel}
+          {isPending ? "Saving…" : level === "first" ? "First Approve" : "Final Approve"}
         </button>
         <button
           type="button"
@@ -91,7 +84,7 @@ export default function ApprovalControls({ rowId, kind }: { rowId: string; kind:
           onClick={() => setRejecting(true)}
           className="rounded border border-red-600 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
-          {rejectLabel}
+          Return for correction
         </button>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}

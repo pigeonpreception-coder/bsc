@@ -106,37 +106,37 @@ export async function resolveApprovalChain(
   return resolveApprovalChainFromPositions(positions ?? [], ownerId);
 }
 
-export type PendingApprovalRow = {
+export type PendingApprovalItem = {
   id: string;
-  responsible_person: string | null;
-  approval_status: string;
+  ownerId: string | null;
+  workflowStatus: string;
 };
 
-export type PendingApprovalEntry = { rowId: string; level: "first" | "final" | "reopen" };
+export type PendingApprovalEntry = { itemId: string; level: "first" | "final" };
 
 /**
- * Pure: given every org_positions row for a tenant and every row currently
- * in a state that needs someone's action, returns which rows the given
- * user is authorized to act on and at which level -- the same resolution
- * used for authorization, reused here so the dashboard only ever shows
- * what the API would actually accept (spec §27).
+ * Pure: given every org_positions row for a tenant and every scorecard
+ * currently in a state that needs someone's action, returns which ones the
+ * given user is authorized to act on and at which level -- the same
+ * resolution used for authorization, reused here so the dashboard only ever
+ * shows what the API would actually accept (spec §27). Unlock is
+ * deliberately not resolved here -- it's a company_admin role power, not
+ * hierarchy-based (see workflow-actions.ts's unlockScorecard).
  */
 export function listPendingApprovalsForUser(
   positions: OrgPositionLite[],
-  rows: PendingApprovalRow[],
+  items: PendingApprovalItem[],
   userId: string,
 ): PendingApprovalEntry[] {
   const entries: PendingApprovalEntry[] = [];
-  for (const row of rows) {
-    if (!row.responsible_person) continue;
-    const chain = resolveApprovalChainFromPositions(positions, row.responsible_person);
+  for (const item of items) {
+    if (!item.ownerId) continue;
+    const chain = resolveApprovalChainFromPositions(positions, item.ownerId);
     if (chain.blockedReason) continue;
-    if (row.approval_status === "submitted" && chain.firstApproverId === userId) {
-      entries.push({ rowId: row.id, level: "first" });
-    } else if (row.approval_status === "first_approved" && chain.finalApproverId === userId) {
-      entries.push({ rowId: row.id, level: "final" });
-    } else if (row.approval_status === "amendment_requested" && chain.finalApproverId === userId) {
-      entries.push({ rowId: row.id, level: "reopen" });
+    if (item.workflowStatus === "pending_manager_review" && chain.firstApproverId === userId) {
+      entries.push({ itemId: item.id, level: "first" });
+    } else if (item.workflowStatus === "pending_final_review" && chain.finalApproverId === userId) {
+      entries.push({ itemId: item.id, level: "final" });
     }
   }
   return entries;

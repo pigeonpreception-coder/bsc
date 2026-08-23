@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { updateProfile, updateNotificationPreference } from "./actions";
+import { updateProfile, updateNotificationPreference, updateSmsNotificationPreference } from "./actions";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:outline-none focus:ring-1 focus:ring-gold";
@@ -13,11 +13,13 @@ export default function ProfileForm({
   phone,
   email,
   emailNotificationsEnabled,
+  smsNotificationsEnabled,
 }: {
   fullName: string;
   phone: string;
   email: string;
   emailNotificationsEnabled: boolean;
+  smsNotificationsEnabled: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -63,7 +65,17 @@ export default function ProfileForm({
       </form>
 
       <EmailChangeForm currentEmail={email} />
-      <NotificationPreferenceToggle initialEnabled={emailNotificationsEnabled} />
+      <NotificationPreferenceToggle
+        initialEnabled={emailNotificationsEnabled}
+        label="Email me about notifications (position changes, approvals, weekly advisories)"
+        action={updateNotificationPreference}
+      />
+      <NotificationPreferenceToggle
+        initialEnabled={smsNotificationsEnabled}
+        label={phone ? "Text me about account-security notifications" : "Add a phone number above to enable SMS notifications"}
+        action={updateSmsNotificationPreference}
+        disabled={!phone}
+      />
     </div>
   );
 }
@@ -134,7 +146,17 @@ function EmailChangeForm({ currentEmail }: { currentEmail: string }) {
   );
 }
 
-function NotificationPreferenceToggle({ initialEnabled }: { initialEnabled: boolean }) {
+function NotificationPreferenceToggle({
+  initialEnabled,
+  label,
+  action,
+  disabled = false,
+}: {
+  initialEnabled: boolean;
+  label: string;
+  action: (enabled: boolean) => Promise<void>;
+  disabled?: boolean;
+}) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +167,7 @@ function NotificationPreferenceToggle({ initialEnabled }: { initialEnabled: bool
     setError(null);
     startTransition(async () => {
       try {
-        await updateNotificationPreference(next);
+        await action(next);
       } catch (err) {
         setEnabled(previous);
         setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -160,11 +182,11 @@ function NotificationPreferenceToggle({ initialEnabled }: { initialEnabled: bool
         <input
           type="checkbox"
           checked={enabled}
-          disabled={isPending}
+          disabled={isPending || disabled}
           onChange={(e) => handleChange(e.target.checked)}
           className="h-4 w-4 rounded border-gray-300 text-navy focus:ring-gold"
         />
-        Email me about notifications (position changes, approvals, weekly advisories)
+        {label}
       </label>
     </div>
   );

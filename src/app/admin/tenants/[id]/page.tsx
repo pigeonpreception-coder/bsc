@@ -6,6 +6,7 @@ import LicenseStatusForm from "./LicenseStatusForm";
 import SeatLimitForm from "./SeatLimitForm";
 import CreateCompanyAdminForm from "./CreateCompanyAdminForm";
 import ResetMfaButton from "./ResetMfaButton";
+import DeleteTenantForm from "./DeleteTenantForm";
 import { setUserStatus } from "@/app/admin/actions";
 
 export default async function TenantDetailPage({
@@ -92,6 +93,8 @@ export default async function TenantDetailPage({
           <CreateCompanyAdminForm tenantId={tenant.id} />
         </div>
       )}
+
+      <DeleteTenantForm tenantId={tenant.id} companyName={tenant.company_name} licenseStatus={tenant.license_status} />
     </div>
   );
 }

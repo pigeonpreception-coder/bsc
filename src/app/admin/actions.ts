@@ -2,6 +2,8 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import * as Sentry from "@sentry/nextjs";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount } from "@/lib/user-invite";
@@ -151,7 +153,7 @@ export async function setUserStatus(userId: string, status: "active" | "suspende
   if (userId === currentUser.id) throw new Error("You can't change your own account status.");
   const admin = createAdminClient();
 
-  const { data: target } = await admin.from("users").select("email, tenant_id, status").eq("id", userId).single();
+  const { data: target } = await admin.from("users").select("email, phone, tenant_id, status").eq("id", userId).single();
   if (!target) throw new Error("User not found");
   // A super_admin's own tenant_id is always null (DB-enforced) — this tool
   // is scoped to managing tenant-scoped users from a tenant's own detail
@@ -178,6 +180,7 @@ export async function setUserStatus(userId: string, status: "active" | "suspende
       type: "account_status_changed",
       message: STATUS_MESSAGES[status],
       email: target.email ? { to: target.email, subject: "Your Safina account status has changed" } : null,
+      sms: target.phone ? { to: target.phone } : null,
     });
   }
 
@@ -217,4 +220,103 @@ export async function createCompanyAdmin(formData: FormData) {
   });
 
   revalidatePath(`/admin/tenants/${tenantId}`);
+}
+
+// Storage's list() is one level at a time (folders are just path prefixes,
+// not a real hierarchy) — recurse to find every real object under a tenant's
+// folder before deletion, rather than hardcoding the current set of
+// subfolder names (company-profile/kpi-evidence/etc.), which would silently
+// miss a future one.
+async function listAllStorageObjectPaths(admin: SupabaseClient, bucket: string, prefix: string): Promise<string[]> {
+  const { data: entries } = await admin.storage.from(bucket).list(prefix, { limit: 1000 });
+  const paths: string[] = [];
+  for (const entry of entries ?? []) {
+    const fullPath = `${prefix}/${entry.name}`;
+    if (entry.id === null) {
+      paths.push(...(await listAllStorageObjectPaths(admin, bucket, fullPath)));
+    } else {
+      paths.push(fullPath);
+    }
+  }
+  return paths;
+}
+
+// Hard delete, not soft — a real soft-delete-with-recovery-window would need
+// every RLS policy across ~20 tenant-scoped tables to also filter on a
+// deleted flag, a much larger change than this feature warrants. The
+// deliberate friction in its place: the tenant must already be suspended
+// (a separate, earlier action) and the caller must retype the exact company
+// name, so deletion can never be the first or only click.
+export async function deleteTenant(formData: FormData) {
+  const currentUser = await requireSuperAdmin();
+  const admin = createAdminClient();
+
+  const tenantId = String(formData.get("tenant_id") ?? "");
+  const confirmName = String(formData.get("confirm_name") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!tenantId) throw new Error("Missing tenant");
+  if (!reason) throw new Error("A reason is required to delete a tenant.");
+
+  const { data: tenant } = await admin
+    .from("tenants")
+    .select("id, company_name, license_status")
+    .eq("id", tenantId)
+    .maybeSingle();
+  if (!tenant) throw new Error("Tenant not found");
+  if (tenant.license_status !== "suspended") {
+    throw new Error("Suspend this tenant's license before deleting it.");
+  }
+  if (confirmName !== tenant.company_name) {
+    throw new Error("Typed company name doesn't match — deletion cancelled.");
+  }
+
+  // Capture everything the Postgres cascade below won't touch, before it's
+  // gone: auth.users has no FK from public.tenants at all (confirmed by
+  // reading every migration), and Storage objects are keyed by a path
+  // convention, not a database relationship.
+  const { data: tenantUsers, error: usersError } = await admin.from("users").select("id").eq("tenant_id", tenantId);
+  if (usersError) throw usersError;
+  const userIds = (tenantUsers ?? []).map((u) => u.id);
+  const storagePaths = await listAllStorageObjectPaths(admin, "company-documents", tenantId);
+
+  // The relational cascade runs first and atomically — either the tenant's
+  // entire Postgres footprint goes in one transaction or none of it does.
+  // Only once that's confirmed do we move on to the two cleanup steps that
+  // can't be transactional (a partial failure there leaves a harmless,
+  // inspectable orphan rather than a half-deleted tenant).
+  const { error: deleteError } = await admin.from("tenants").delete().eq("id", tenantId);
+  if (deleteError) throw deleteError;
+
+  const authCleanupFailures: string[] = [];
+  for (const userId of userIds) {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error) {
+      authCleanupFailures.push(userId);
+      Sentry.captureException(error, { extra: { context: "deleteTenant auth cleanup", tenantId, userId } });
+    }
+  }
+
+  let storageCleanupFailed = false;
+  if (storagePaths.length > 0) {
+    const { error } = await admin.storage.from("company-documents").remove(storagePaths);
+    if (error) {
+      storageCleanupFailed = true;
+      Sentry.captureException(error, { extra: { context: "deleteTenant storage cleanup", tenantId } });
+    }
+  }
+
+  // tenant_id is null here on purpose (migration 0030) — the tenant no
+  // longer exists to reference, same as every other audit row this delete
+  // just cascaded past.
+  await writeAuditLog(admin, {
+    tenant_id: null,
+    user_id: currentUser.id,
+    action: "delete_tenant",
+    resource_type: "tenant",
+    resource_id: tenantId,
+    old_value: { company_name: tenant.company_name, license_status: tenant.license_status, user_count: userIds.length },
+    new_value: { reason, auth_cleanup_failures: authCleanupFailures, storage_cleanup_failed: storageCleanupFailed },
+  });
+
+  revalidatePath("/admin");
 }

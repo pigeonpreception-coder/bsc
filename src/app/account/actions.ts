@@ -58,6 +58,32 @@ export async function updateNotificationPreference(enabled: boolean): Promise<vo
   });
 }
 
+// Opt-in, unlike the email preference above — a phone number needs to
+// already be on file, and SMS costs real money per message, so this
+// defaults off (see 0032_sms_notifications.sql) and is only ever enabled by
+// an explicit action here.
+export async function updateSmsNotificationPreference(enabled: boolean): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authorized");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("users")
+    .update({ sms_notifications_enabled: enabled })
+    .eq("id", user.id);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, {
+    tenant_id: user.tenant_id,
+    user_id: user.id,
+    action: "update_notification_preference",
+    resource_type: "user",
+    resource_id: user.id,
+    old_value: null,
+    new_value: { sms_notifications_enabled: enabled },
+  });
+}
+
 export async function enrollMfaFactor(): Promise<{ factorId: string; qrCode: string; secret: string }> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authorized");

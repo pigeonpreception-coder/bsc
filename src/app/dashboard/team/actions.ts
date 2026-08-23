@@ -103,7 +103,7 @@ export async function setTeamMemberStatus(userId: string, status: "active" | "su
 
   const { data: target } = await admin
     .from("users")
-    .select("email, role, status")
+    .select("email, phone, role, status")
     .eq("id", userId)
     .eq("tenant_id", user.tenant_id)
     .maybeSingle();
@@ -134,6 +134,7 @@ export async function setTeamMemberStatus(userId: string, status: "active" | "su
       type: "account_status_changed",
       message: STATUS_MESSAGES[status],
       email: target.email ? { to: target.email, subject: "Your Safina account status has changed" } : null,
+      sms: target.phone ? { to: target.phone } : null,
     });
   }
 

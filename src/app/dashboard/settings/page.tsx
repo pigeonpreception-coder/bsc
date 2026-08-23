@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getEntitlement } from "@/lib/licensing";
 import { CASCADE_TIERS, DEFAULT_OWN_WEIGHT_PERCENT, type CascadeTierKey } from "@/lib/cascade-weights";
 import CascadeWeightsForm from "./CascadeWeightsForm";
+import ExportDataButton from "./ExportDataButton";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -57,6 +58,17 @@ export default async function SettingsPage() {
           individual staff scores are their own KPIs only, and the Board isn&apos;t scored.
         </p>
         <CascadeWeightsForm initial={initial} />
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-navy">Data export</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          Download a structured JSON export of your organisation&apos;s strategic plan, org structure, scorecards, users,
+          and audit trail — useful for backup or if you&apos;re winding down your account.
+        </p>
+        <div className="mt-3">
+          <ExportDataButton />
+        </div>
       </div>
     </div>
   );

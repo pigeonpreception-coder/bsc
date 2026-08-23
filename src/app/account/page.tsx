@@ -24,7 +24,7 @@ export default async function AccountPage({
   // factors above.
   const { data: profile } = await supabase
     .from("users")
-    .select("phone, email_notifications_enabled")
+    .select("phone, email_notifications_enabled, sms_notifications_enabled")
     .eq("id", user.id)
     .single();
 
@@ -53,6 +53,7 @@ export default async function AccountPage({
           phone={profile?.phone ?? ""}
           email={user.email}
           emailNotificationsEnabled={profile?.email_notifications_enabled ?? true}
+          smsNotificationsEnabled={profile?.sms_notifications_enabled ?? false}
         />
       </div>
 

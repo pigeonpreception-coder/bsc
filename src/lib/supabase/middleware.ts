@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // without this exemption every cron invocation (and /api/sentry-check) was
 // silently redirected to /login before the route handler's own auth check
 // ever ran — the cron jobs never actually executed against real traffic.
-const PUBLIC_PATHS = ["/login", "/auth", "/api"];
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/api"];
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname.startsWith(path));
@@ -76,7 +76,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  if (user && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

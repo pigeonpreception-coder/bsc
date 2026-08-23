@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { isPublicPath, needsMfaChallenge, needsMandatoryMfaEnrollment } from "./middleware";
 
 describe("isPublicPath", () => {
-  it("treats /login and /auth as public", () => {
+  it("treats /login, /signup, and /auth as public", () => {
     expect(isPublicPath("/login")).toBe(true);
+    expect(isPublicPath("/signup")).toBe(true);
     expect(isPublicPath("/auth/callback")).toBe(true);
   });
 

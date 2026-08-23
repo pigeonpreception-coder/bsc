@@ -11,7 +11,8 @@ export type NotificationType =
   | "account_status_changed"
   | "score_pending_review"
   | "score_approved"
-  | "score_rejected";
+  | "score_rejected"
+  | "task_assigned";
 
 export type CreateNotificationParams = {
   tenantId: string;

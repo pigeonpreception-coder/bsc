@@ -62,6 +62,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <nav className="ml-4 flex gap-4 text-sm text-white/80">
             <Link href="/dashboard" className="hover:text-white">Dashboard</Link>
             {planId && <Link href="/dashboard/scorecards" className="hover:text-white">Scorecards</Link>}
+            {["company_admin", "manager"].includes(user.role) && (
+              <Link href="/dashboard/tasks" className="hover:text-white">Tasks</Link>
+            )}
             {user.role === "company_admin" && (
               <>
                 {planId && <Link href={`/dashboard/plan/${planId}`} className="hover:text-white">Plan</Link>}

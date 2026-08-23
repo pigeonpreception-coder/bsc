@@ -161,6 +161,12 @@ export default async function DashboardHomePage() {
     .eq("task_date", today)
     .order("task_priority", { ascending: true });
 
+  const assignerIds = [...new Set((todaysTasks ?? []).map((t) => t.assigned_by).filter((id): id is string => Boolean(id)))];
+  const { data: assigners } = assignerIds.length
+    ? await supabase.from("users").select("id, full_name, email").in("id", assignerIds)
+    : { data: [] as { id: string; full_name: string | null; email: string }[] };
+  const assignerNameById = new Map((assigners ?? []).map((a) => [a.id, a.full_name || a.email]));
+
   // ─── Alerts ────────────────────────────────────────────
   // Scoped to the caller's own position at the query level (not filtered
   // after the fact) so a busy tenant's other-department alerts can't push
@@ -408,6 +414,7 @@ export default async function DashboardHomePage() {
           rollover_count: t.rollover_count,
           completed_at: t.completed_at,
           completion_rating: t.completion_rating,
+          assigned_by_name: t.assigned_by ? assignerNameById.get(t.assigned_by) ?? "Someone" : null,
         }))} />
       </div>
 

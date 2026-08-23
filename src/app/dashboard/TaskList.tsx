@@ -14,6 +14,7 @@ type Task = {
   rollover_count: number;
   completed_at: string | null;
   completion_rating: number | null;
+  assigned_by_name: string | null;
 };
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -97,6 +98,11 @@ function TaskCard({ task }: { task: Task }) {
             )}
             {task.linked_kpi && (
               <span className="text-xs text-gray-400">KPI: {task.linked_kpi}</span>
+            )}
+            {task.assigned_by_name && (
+              <span className="rounded-full bg-navy/10 px-2 py-0.5 text-xs font-medium text-navy">
+                Assigned by {task.assigned_by_name}
+              </span>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeAutoStatus } from "@/lib/scorecard";
@@ -8,6 +9,10 @@ import { calculatePerformanceScores } from "@/lib/performance";
 import { writeAuditLog } from "@/lib/audit-log";
 import { parseOwnWeightPercent } from "@/lib/cascade-weights";
 import { resolveApprovalChain } from "@/lib/approval-hierarchy";
+import { isPathOwnedByTenant } from "@/lib/document-extract";
+
+export type EvidenceEntry = { url: string; fileName: string; fileSize: number };
+const MAX_EVIDENCE_ENTRIES = 10;
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -54,6 +59,30 @@ async function loadContext(rowId: string) {
   return { user, row, scorecard, supabase };
 }
 
+type ScorecardWorkflowRow = { workflow_status: string; owner_user_id: string | null };
+type CurrentUserLite = { id: string; tenant_id: string | null; role: string };
+
+// Shared by updateScorecardRow's "actual" field and attachKpiEvidence — both
+// are performance-data entry on the current submission, gated identically:
+// owner during owner_editing (admin only if unowned), the resolved
+// immediate manager during pending_manager_review (an explicit grant, not
+// implied by role — company_admin only qualifies by independently
+// occupying that position), no one during pending_final_review (the
+// division head reviews and decides, doesn't edit — matches the spec's own
+// role matrix), no one once locked.
+async function canEditRowActual(supabase: SupabaseClient, scorecard: ScorecardWorkflowRow, user: CurrentUserLite): Promise<boolean> {
+  if (scorecard.workflow_status === "locked") return false;
+  if (scorecard.workflow_status === "owner_editing") {
+    return scorecard.owner_user_id ? scorecard.owner_user_id === user.id : user.role === "company_admin";
+  }
+  if (scorecard.workflow_status === "pending_manager_review") {
+    if (!scorecard.owner_user_id) return false;
+    const chain = await resolveApprovalChain(supabase, user.tenant_id!, scorecard.owner_user_id);
+    return chain.firstApproverId === user.id;
+  }
+  return false; // pending_final_review
+}
+
 export async function updateScorecardRow(rowId: string, field: EditableField, value: string) {
   if (!ADMIN_EDITABLE_FIELDS.includes(field)) throw new Error("Invalid field");
 
@@ -62,30 +91,8 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
 
   let canEdit: boolean;
   if (field === "actual") {
-    // The BSC as a whole moves through the review/approval workflow (see
-    // workflow-actions.ts) — a KPI's actual value is only editable while
-    // its parent scorecard is in a stage that permits it, regardless of who
-    // "owns" this particular row's field.
     if (scorecard.workflow_status === "locked") throw new Error(LOCKED_MESSAGE);
-
-    if (scorecard.workflow_status === "owner_editing") {
-      canEdit = scorecard.owner_user_id ? scorecard.owner_user_id === user.id : isAdmin;
-    } else if (scorecard.workflow_status === "pending_manager_review") {
-      // The immediate manager may review and correct while it's in their
-      // queue — an explicit grant, not implied by admin/role. Governance
-      // principle: this follows the org hierarchy, not the company_admin
-      // role — a company_admin only qualifies by independently occupying
-      // the resolved position.
-      canEdit = scorecard.owner_user_id
-        ? (await resolveApprovalChain(supabase, user.tenant_id!, scorecard.owner_user_id)).firstApproverId === user.id
-        : false;
-    } else {
-      // pending_final_review: the division head reviews and decides, they
-      // don't edit — matches the spec's role matrix (Edit Subordinate BSC
-      // is policy-based for Division Head; not enabled here, no such policy
-      // toggle exists elsewhere in this app to hang it off).
-      canEdit = false;
-    }
+    canEdit = await canEditRowActual(supabase, scorecard, user);
   } else {
     // Every other field is scorecard *design* (KPI definition, target,
     // weights, etc.) — company_admin authority there is unrelated to
@@ -156,6 +163,40 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
 
     await calculatePerformanceScores(supabase, user.tenant_id!);
   }
+
+  revalidatePath(`/dashboard/scorecards/${row.scorecard_id}`);
+}
+
+// Sets the row's full evidence list (add or remove — the client always
+// sends the complete resulting list, same as SupportingDocumentsList's
+// pattern elsewhere in this app). Storage upload itself happens client-side
+// directly against the company-documents bucket, same as that precedent —
+// this action only ever trusts paths it re-verifies belong to the caller's
+// own tenant.
+export async function attachKpiEvidence(rowId: string, evidence: EvidenceEntry[]) {
+  const { user, row, scorecard, supabase } = await loadContext(rowId);
+  if (scorecard.workflow_status === "locked") throw new Error(LOCKED_MESSAGE);
+  if (!(await canEditRowActual(supabase, scorecard, user))) throw new Error("Not authorized to edit this field");
+
+  if (evidence.length > MAX_EVIDENCE_ENTRIES) {
+    throw new Error(`No more than ${MAX_EVIDENCE_ENTRIES} evidence files per KPI.`);
+  }
+  for (const item of evidence) {
+    if (!isPathOwnedByTenant(item.url, user.tenant_id!)) throw new Error("Not authorized");
+  }
+
+  const { error } = await supabase.from("scorecard_rows").update({ evidence }).eq("id", rowId);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, {
+    tenant_id: row.tenant_id,
+    user_id: user.id,
+    action: "attach_kpi_evidence",
+    resource_type: "scorecard_row",
+    resource_id: rowId,
+    old_value: { evidence: row.evidence },
+    new_value: { evidence },
+  });
 
   revalidatePath(`/dashboard/scorecards/${row.scorecard_id}`);
 }

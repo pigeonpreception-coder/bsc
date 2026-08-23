@@ -70,7 +70,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { updateScorecardRow, addScorecardRow, deleteScorecardRow } = await import("./row-actions");
+const { updateScorecardRow, addScorecardRow, deleteScorecardRow, attachKpiEvidence } = await import("./row-actions");
 
 const companyAdmin = { id: "admin-1", email: "admin@b.com", full_name: "Admin", role: "company_admin" as const, tenant_id: "tenant-1" };
 const owner = { id: "owner-1", email: "owner@b.com", full_name: "Owner One", role: "staff" as const, tenant_id: "tenant-1" };
@@ -86,6 +86,7 @@ const baseRow = {
   status: "at_risk",
   lower_is_better: false,
   responsible_person: null,
+  evidence: [] as { url: string; fileName: string; fileSize: number }[],
 };
 
 const editableScorecard = { id: "scorecard-1", workflow_status: "owner_editing", owner_user_id: "owner-1" };
@@ -186,5 +187,57 @@ describe("addScorecardRow / deleteScorecardRow — locked scorecard guard", () =
     getCurrentUserMock.mockResolvedValue(companyAdmin);
     await deleteScorecardRow("row-1");
     expect(rowDeleteMock).toHaveBeenCalled();
+  });
+});
+
+describe("attachKpiEvidence", () => {
+  const validEntry = { url: "tenant-1/kpi-evidence/123-report.pdf", fileName: "report.pdf", fileSize: 1024 };
+
+  it("lets the owner attach evidence while owner_editing", async () => {
+    getCurrentUserMock.mockResolvedValue(owner);
+    await attachKpiEvidence("row-1", [validEntry]);
+    expect(rowUpdateMock).toHaveBeenCalledWith({ evidence: [validEntry] });
+    expect(writeAuditLogMock).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: "attach_kpi_evidence" }));
+  });
+
+  it("blocks a non-owner during owner_editing", async () => {
+    getCurrentUserMock.mockResolvedValue(companyAdmin);
+    await expect(attachKpiEvidence("row-1", [validEntry])).rejects.toThrow("Not authorized to edit this field");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("blocks once the scorecard is locked", async () => {
+    scorecardSingleMock.mockResolvedValue({ data: { ...editableScorecard, workflow_status: "locked" } });
+    getCurrentUserMock.mockResolvedValue(owner);
+    await expect(attachKpiEvidence("row-1", [validEntry])).rejects.toThrow("locked");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("lets the resolved first approver attach evidence while pending manager review", async () => {
+    scorecardSingleMock.mockResolvedValue({ data: { ...editableScorecard, workflow_status: "pending_manager_review" } });
+    getCurrentUserMock.mockResolvedValue(manager);
+    await attachKpiEvidence("row-1", [validEntry]);
+    expect(rowUpdateMock).toHaveBeenCalledWith({ evidence: [validEntry] });
+  });
+
+  it("rejects a storage path that doesn't belong to the caller's tenant", async () => {
+    getCurrentUserMock.mockResolvedValue(owner);
+    const foreignEntry = { url: "tenant-2/kpi-evidence/123-report.pdf", fileName: "report.pdf", fileSize: 1024 };
+    await expect(attachKpiEvidence("row-1", [foreignEntry])).rejects.toThrow("Not authorized");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects more than the allowed number of evidence files", async () => {
+    getCurrentUserMock.mockResolvedValue(owner);
+    const many = Array.from({ length: 11 }, (_, i) => ({ ...validEntry, url: `tenant-1/kpi-evidence/${i}.pdf` }));
+    await expect(attachKpiEvidence("row-1", many)).rejects.toThrow("No more than");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("allows shrinking the list to remove an entry", async () => {
+    rowSingleMock.mockResolvedValue({ data: { ...baseRow, evidence: [validEntry] } });
+    getCurrentUserMock.mockResolvedValue(owner);
+    await attachKpiEvidence("row-1", []);
+    expect(rowUpdateMock).toHaveBeenCalledWith({ evidence: [] });
   });
 });

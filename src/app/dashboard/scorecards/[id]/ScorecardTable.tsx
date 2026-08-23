@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge } from "./EditableCell";
-import { updateScorecardRow, addScorecardRow, deleteScorecardRow, type EditableField } from "./row-actions";
+import { updateScorecardRow, addScorecardRow, deleteScorecardRow, type EditableField, type EvidenceEntry } from "./row-actions";
+import EvidenceList from "./EvidenceList";
 import {
   addScorecardColumn,
   deleteScorecardColumn,
@@ -37,6 +38,7 @@ export type ScorecardRow = {
   responsible_person: string | null;
   lower_is_better: boolean | null;
   status: string;
+  evidence: EvidenceEntry[];
   /** Resolved server-side from the parent scorecard's workflow_status and
    * the org hierarchy (see src/lib/approval-hierarchy.ts) — the client
    * never re-derives this; it's a display hint only, the actual enforcement
@@ -122,10 +124,11 @@ function renderFixedCell(
     canEditAll: boolean;
     canEditActual: boolean;
     teamOptions: { value: string; label: string }[];
+    tenantId: string;
     save: (rowId: string, field: EditableField, value: string) => Promise<void>;
   },
 ) {
-  const { canEditAll, canEditActual, teamOptions, save } = ctx;
+  const { canEditAll, canEditActual, teamOptions, tenantId, save } = ctx;
 
   if (OBJECTIVE_SHARED_COLUMNS.has(key) && !isNewObjective) {
     return key === "perspective" ? <span className="text-gray-300">↳</span> : null;
@@ -177,7 +180,12 @@ function renderFixedCell(
       // the parent scorecard's workflow_status (see WorkflowPanel.tsx above
       // the table for the BSC-wide status banner and Agree/Approve/Unlock
       // controls) — row.canEditActual already reflects locked/wrong-stage.
-      return <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />;
+      return (
+        <div>
+          <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />
+          <EvidenceList rowId={row.id} tenantId={tenantId} evidence={row.evidence} canEdit={canEditActual} />
+        </div>
+      );
     case "responsible_person":
       return <EditableSelectCell value={row.responsible_person} editable={canEditAll} onSave={(v) => save(row.id, "responsible_person", v)} options={teamOptions} />;
     case "status":
@@ -191,6 +199,7 @@ const PLACEHOLDER_OBJECTIVE = /^New objective( \d+)?$/;
 
 export default function ScorecardTable({
   scorecardId,
+  tenantId,
   rows,
   canEditAll,
   teamOptions,
@@ -198,6 +207,7 @@ export default function ScorecardTable({
   cellValues = {},
 }: {
   scorecardId: string;
+  tenantId: string;
   rows: ScorecardRow[];
   canEditAll: boolean;
   teamOptions: { value: string; label: string }[];
@@ -292,6 +302,7 @@ export default function ScorecardTable({
                           canEditAll,
                           canEditActual,
                           teamOptions,
+                          tenantId,
                           save,
                         })}
                       </td>

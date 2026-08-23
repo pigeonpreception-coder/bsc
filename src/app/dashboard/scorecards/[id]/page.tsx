@@ -86,6 +86,7 @@ export default async function ScorecardDetailPage({ params }: { params: Promise<
 
       <ScorecardTable
         scorecardId={id}
+        tenantId={scorecard.tenant_id}
         rows={(rows ?? []).map((r) => ({ ...r, canEditActual }))}
         canEditAll={canEditAll}
         teamOptions={teamOptions}

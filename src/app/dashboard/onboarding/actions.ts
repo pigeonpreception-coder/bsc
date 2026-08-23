@@ -594,7 +594,7 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
   const staffCount = positions.filter((p) => p.position_type === "individual_staff").length;
   const nonStaffCount = posCount - staffCount;
   const totalBSCs = nonStaffCount * 2 + staffCount; // 2 BSCs per non-staff, 1 per staff
-  await supabase.from("ai_sessions").insert({
+  const { error: aiSessionError } = await supabase.from("ai_sessions").insert({
     tenant_id: tenantId,
     user_id: user.id,
     session_type: "bsc_generation",
@@ -604,14 +604,20 @@ Use the platform-standard 14-column template. Call submit_scorecard.`;
         ? `${posCount} positions → ${totalBSCs} scorecards (${nonStaffCount} × 2 office+individual + ${staffCount} × 1 staff)`
         : `${posCount - failures.length} of ${posCount} positions succeeded; ${failures.length} failed`,
   });
+  if (aiSessionError) throw aiSessionError;
 
   // onboarding_completed only ever means "the last cascade run fully
   // succeeded" — the background jobs (cron) rely on this flag being
-  // trustworthy, not just "some scorecard exists somewhere."
-  await supabase
+  // trustworthy, not just "some scorecard exists somewhere." Left unchecked,
+  // a failed update here (success case: failures.length === 0) would leave
+  // the tenant silently excluded from every nightly cron job — no daily
+  // tasks, no performance recalc, no weekly advisory — with the UI still
+  // reporting success, until someone notices and re-runs onboarding.
+  const { error: onboardingCompletedError } = await supabase
     .from("tenants")
     .update({ onboarding_completed: failures.length === 0 })
     .eq("id", tenantId);
+  if (onboardingCompletedError) throw onboardingCompletedError;
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/scorecards");

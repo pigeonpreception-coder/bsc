@@ -122,7 +122,29 @@ async function extractPdf(buffer: Buffer): Promise<string> {
   }
 }
 
+// mammoth's public API has no length-limiting hook, unlike the manual
+// JSZip iteration extractPptx (below) uses — but .docx is a zip container
+// with the same "pathological compression ratio" risk §16 hardened
+// extractPptx against. Pre-checking the main content stream's own
+// decompressed size via JSZip, before handing the buffer to mammoth's
+// heavier (style/paragraph-resolving) pipeline, bounds the worst case to
+// roughly one raw decompression of that one entry rather than mammoth's
+// full multi-part processing of it. Same residual limit as extractPptx's
+// own per-entry decompression: bounded by process memory, not a hard cap —
+// caught by extractDocumentText's try/catch below rather than crashing.
+const MAX_DOCX_DECOMPRESSED_CHARS = 2_000_000;
+
 async function extractDocx(buffer: Buffer): Promise<string> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(buffer);
+  const mainContent = zip.files["word/document.xml"];
+  if (mainContent) {
+    const xml = await mainContent.async("string");
+    if (xml.length > MAX_DOCX_DECOMPRESSED_CHARS) {
+      throw new Error("Document content too large to extract");
+    }
+  }
+
   const mammoth = await import("mammoth");
   const result = await mammoth.extractRawText({ buffer });
   return result.value;

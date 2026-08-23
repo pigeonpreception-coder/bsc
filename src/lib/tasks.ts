@@ -66,7 +66,7 @@ export async function rolloverUnfinishedTasks(
 
   for (const task of unfinished) {
     const newRollover = (task.rollover_count ?? 0) + 1;
-    await supabase
+    const { error: rolloverError } = await supabase
       .from("daily_tasks")
       .update({
         task_date: today,
@@ -74,6 +74,7 @@ export async function rolloverUnfinishedTasks(
         status: "untouched",
       })
       .eq("id", task.id);
+    if (rolloverError) throw rolloverError;
 
     if (newRollover >= 3) {
       candidateAlerts.push({
@@ -100,7 +101,8 @@ export async function rolloverUnfinishedTasks(
     const existingMessages = new Set((existingAlerts ?? []).map((a) => a.alert_message));
     const newAlerts = candidateAlerts.filter((a) => !existingMessages.has(a.alert_message));
     if (newAlerts.length > 0) {
-      await supabase.from("performance_alerts").insert(newAlerts);
+      const { error: alertsError } = await supabase.from("performance_alerts").insert(newAlerts);
+      if (alertsError) throw alertsError;
     }
   }
 

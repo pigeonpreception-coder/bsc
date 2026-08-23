@@ -408,6 +408,7 @@ export async function generatePerformanceAlerts(supabase: SupabaseClient, tenant
   const newAlerts = alerts.filter((a) => !existingKeys.has(`${a.scorecard_row_id}:${a.alert_type}`));
 
   if (newAlerts.length > 0) {
-    await supabase.from("performance_alerts").insert(newAlerts);
+    const { error } = await supabase.from("performance_alerts").insert(newAlerts);
+    if (error) throw error;
   }
 }

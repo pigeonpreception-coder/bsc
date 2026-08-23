@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { computeAutoStatus } from "@/lib/scorecard";
 import { calculatePerformanceScores } from "@/lib/performance";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -45,7 +45,12 @@ async function loadContext(rowId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // Writing to scorecard_rows requires the service-role key (see
+  // 0033_lock_down_scorecard_writes.sql) — the real authorization here
+  // (owner/resolved-manager/locked) is dynamic, TypeScript-side logic RLS
+  // can't express, so the explicit tenant check below is what makes this
+  // safe, same as every other admin-client caller in this codebase.
+  const supabase = createAdminClient();
   const { data: row } = await supabase.from("scorecard_rows").select("*").eq("id", rowId).single();
   if (!row || row.tenant_id !== user.tenant_id) throw new Error("Not authorized");
 
@@ -205,7 +210,10 @@ export async function addScorecardRow(scorecardId: string) {
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin" || !user.tenant_id) throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // See loadContext's comment — writing scorecard_rows now requires the
+  // service-role key; the explicit tenant check just below is what makes
+  // this safe.
+  const supabase = createAdminClient();
 
   // scorecardId is caller-supplied — same class of gap already fixed in
   // column-actions.ts (addScorecardColumn/updateCellValue) and

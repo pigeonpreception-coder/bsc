@@ -33,8 +33,8 @@ vi.mock("@/lib/audit-log", () => ({ writeAuditLog: writeAuditLogMock }));
 vi.mock("@/lib/performance", () => ({ calculatePerformanceScores: calculatePerformanceScoresMock }));
 vi.mock("@/lib/approval-hierarchy", () => ({ resolveApprovalChain: resolveApprovalChainMock }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
     from: (table: string) => {
       if (table === "scorecard_rows") {
         return {

@@ -32,8 +32,8 @@ vi.mock("@/lib/approval-hierarchy", () => ({
   HIERARCHY_NOT_CONFIGURED_MESSAGE: "Approval cannot proceed because the required departmental manager or division head has not been configured. Please contact an authorized administrator.",
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
     from: (table: string) => {
       if (table === "scorecards") {
         return {

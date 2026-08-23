@@ -90,7 +90,10 @@ function ResetButton() {
         "use server";
         const user = await (await import("@/lib/auth")).getCurrentUser();
         if (!user || user.role !== "company_admin" || !user.tenant_id) return;
-        const supabase = await (await import("@/lib/supabase/server")).createClient();
+        // Writing scorecards requires the service-role key (see
+        // 0033_lock_down_scorecard_writes.sql) — every query below is
+        // scoped to user.tenant_id, which is what makes this safe.
+        const supabase = (await import("@/lib/supabase/admin")).createAdminClient();
         await supabase.from("position_scorecards").delete().eq("tenant_id", user.tenant_id);
         const { data: toDelete } = await supabase
           .from("scorecards")

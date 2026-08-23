@@ -49,7 +49,7 @@ vi.mock("@/lib/supabase/admin", () => ({
       if (table === "users") {
         return {
           select: (cols: string) => {
-            if (cols === "id") return { eq: () => usersListMock() };
+            if (cols === "id") return { eq: () => ({ range: () => usersListMock() }) };
             return { eq: () => ({ single: singleMock }) };
           },
           update: (values: Record<string, unknown>) => ({ eq: () => updateMock(values) }),
@@ -178,6 +178,33 @@ describe("deleteTenant", () => {
         new_value: expect.objectContaining({ reason: "GDPR request" }),
       }),
     );
+  });
+
+  it("pages through more than one page of users rather than silently dropping the rest", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ id: `user-${i}` }));
+    const secondPage = [{ id: "user-1000" }];
+    usersListMock.mockReset().mockResolvedValueOnce({ data: firstPage }).mockResolvedValueOnce({ data: secondPage });
+
+    await deleteTenant(formDataFor({ tenant_id: "tenant-1", confirm_name: "Acme Ltd", reason: "test" }));
+
+    expect(usersListMock).toHaveBeenCalledTimes(2);
+    expect(authDeleteUserMock).toHaveBeenCalledWith("user-0");
+    expect(authDeleteUserMock).toHaveBeenCalledWith("user-1000");
+    expect(authDeleteUserMock).toHaveBeenCalledTimes(1001);
+  });
+
+  it("pages through more than one page of storage objects rather than silently dropping the rest", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({ name: `file-${i}.pdf`, id: `obj-${i}` }));
+    const secondPage = [{ name: "file-1000.pdf", id: "obj-1000" }];
+    storageListMock.mockReset().mockResolvedValueOnce({ data: firstPage }).mockResolvedValueOnce({ data: secondPage });
+
+    await deleteTenant(formDataFor({ tenant_id: "tenant-1", confirm_name: "Acme Ltd", reason: "test" }));
+
+    expect(storageListMock).toHaveBeenCalledTimes(2);
+    const removedPaths = storageRemoveMock.mock.calls[0][0] as string[];
+    expect(removedPaths).toContain("tenant-1/file-0.pdf");
+    expect(removedPaths).toContain("tenant-1/file-1000.pdf");
+    expect(removedPaths).toHaveLength(1001);
   });
 
   it("records auth cleanup failures but still completes", async () => {

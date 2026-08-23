@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAuditLog } from "@/lib/audit-log";
 import { createNotification, type NotificationType } from "@/lib/notifications";
 import { mapWithConcurrency } from "@/lib/concurrency";
@@ -70,7 +70,14 @@ async function loadScorecardContext(scorecardId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // Writing to scorecards requires the service-role key (see
+  // 0033_lock_down_scorecard_writes.sql — RLS no longer trusts an ordinary
+  // authenticated session to write these rows, since the real authorization
+  // here is the dynamic owner/resolved-manager/locked logic below, which
+  // SQL can't express). The explicit tenant check below is what makes that
+  // safe, the same pattern every other admin-client caller in this codebase
+  // already follows.
+  const supabase = createAdminClient();
   const { data: scorecard } = await supabase.from("scorecards").select("*").eq("id", scorecardId).single();
   if (!scorecard || scorecard.tenant_id !== user.tenant_id) throw new Error("Not authorized");
 

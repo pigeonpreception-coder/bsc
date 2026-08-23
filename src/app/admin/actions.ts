@@ -222,23 +222,55 @@ export async function createCompanyAdmin(formData: FormData) {
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
+const STORAGE_LIST_PAGE_SIZE = 1000;
+
 // Storage's list() is one level at a time (folders are just path prefixes,
 // not a real hierarchy) — recurse to find every real object under a tenant's
 // folder before deletion, rather than hardcoding the current set of
 // subfolder names (company-profile/kpi-evidence/etc.), which would silently
-// miss a future one.
+// miss a future one. Each level is itself paginated — a tenant with more
+// than STORAGE_LIST_PAGE_SIZE objects at a single level (plausible after
+// years of KPI evidence uploads alone) would otherwise silently leave
+// everything past the first page live in Storage after "deletion."
 async function listAllStorageObjectPaths(admin: SupabaseClient, bucket: string, prefix: string): Promise<string[]> {
-  const { data: entries } = await admin.storage.from(bucket).list(prefix, { limit: 1000 });
   const paths: string[] = [];
-  for (const entry of entries ?? []) {
-    const fullPath = `${prefix}/${entry.name}`;
-    if (entry.id === null) {
-      paths.push(...(await listAllStorageObjectPaths(admin, bucket, fullPath)));
-    } else {
-      paths.push(fullPath);
+  let offset = 0;
+  for (;;) {
+    const { data: entries } = await admin.storage.from(bucket).list(prefix, { limit: STORAGE_LIST_PAGE_SIZE, offset });
+    for (const entry of entries ?? []) {
+      const fullPath = `${prefix}/${entry.name}`;
+      if (entry.id === null) {
+        paths.push(...(await listAllStorageObjectPaths(admin, bucket, fullPath)));
+      } else {
+        paths.push(fullPath);
+      }
     }
+    if (!entries || entries.length < STORAGE_LIST_PAGE_SIZE) break;
+    offset += STORAGE_LIST_PAGE_SIZE;
   }
   return paths;
+}
+
+const USER_LIST_PAGE_SIZE = 1000;
+
+// Same pagination concern as above, for the auth.users cleanup list — a
+// tenant with more than USER_LIST_PAGE_SIZE users would otherwise silently
+// leave every account past the first page live in Supabase Auth.
+async function listAllTenantUserIds(admin: SupabaseClient, tenantId: string): Promise<string[]> {
+  const ids: string[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await admin
+      .from("users")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .range(from, from + USER_LIST_PAGE_SIZE - 1);
+    if (error) throw error;
+    ids.push(...(data ?? []).map((u) => u.id));
+    if (!data || data.length < USER_LIST_PAGE_SIZE) break;
+    from += USER_LIST_PAGE_SIZE;
+  }
+  return ids;
 }
 
 // Hard delete, not soft — a real soft-delete-with-recovery-window would need
@@ -274,9 +306,7 @@ export async function deleteTenant(formData: FormData) {
   // gone: auth.users has no FK from public.tenants at all (confirmed by
   // reading every migration), and Storage objects are keyed by a path
   // convention, not a database relationship.
-  const { data: tenantUsers, error: usersError } = await admin.from("users").select("id").eq("tenant_id", tenantId);
-  if (usersError) throw usersError;
-  const userIds = (tenantUsers ?? []).map((u) => u.id);
+  const userIds = await listAllTenantUserIds(admin, tenantId);
   const storagePaths = await listAllStorageObjectPaths(admin, "company-documents", tenantId);
 
   // The relational cascade runs first and atomically — either the tenant's

@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
 import { buildCompanyContextBlock } from "@/lib/plan-document-generation";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -242,7 +243,11 @@ export async function generateCascadedBSCs() {
   if (!rateLimit.allowed) throw new Error(rateLimit.reason);
   await recordAiGenerationAttempt(user.id);
 
-  const supabase = await createClient();
+  // Writing scorecards/scorecard_rows requires the service-role key (see
+  // 0033_lock_down_scorecard_writes.sql) — every query below is already
+  // explicitly scoped to `tenantId` (asserted from the already-verified
+  // company_admin caller above), which is what makes this safe.
+  const supabase = createAdminClient();
   const tenantId = user.tenant_id;
 
   // Load the strategic plan + corporate BSC context
@@ -316,7 +321,10 @@ Produce a complete corporate Balanced Scorecard covering all four perspectives (
     .single();
   if (corpScorecardError) throw corpScorecardError;
 
-  await supabase.from("scorecard_rows").insert(rowsToInsert(corporateRows, newCorpScorecard.id, tenantId));
+  const { error: corpRowsError } = await supabase
+    .from("scorecard_rows")
+    .insert(rowsToInsert(corporateRows, newCorpScorecard.id, tenantId));
+  if (corpRowsError) throw corpRowsError;
 
   const corpScorecard = newCorpScorecard;
   const corporateContext = corporateRows

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { generateRows, rowsToInsert } from "@/lib/bsc-generation";
+import { buildCompanyContextBlock } from "@/lib/plan-document-generation";
 import { writeAuditLog } from "@/lib/audit-log";
 import { checkAiGenerationRateLimit, recordAiGenerationAttempt } from "@/lib/rate-limit";
 
@@ -254,43 +255,6 @@ export async function generateCascadedBSCs() {
 
   if (!plan) throw new Error("You need an approved Strategic Plan before generating cascaded BSCs.");
 
-  // Load existing corporate scorecard rows for context. Ordered + limited
-  // (rather than .maybeSingle()) so this degrades gracefully instead of
-  // throwing if a plan ever ends up with more than one corporate scorecard.
-  const { data: corpScorecards } = await supabase
-    .from("scorecards")
-    .select("id")
-    .eq("plan_id", plan.id)
-    .eq("scorecard_type", "corporate")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  const corpScorecard = corpScorecards?.[0] ?? null;
-
-  let corporateContext = "";
-  if (corpScorecard) {
-    const { data: corpRows } = await supabase
-      .from("scorecard_rows")
-      .select("perspective, strategic_objective, kpi, target")
-      .eq("scorecard_id", corpScorecard.id);
-    if (corpRows && corpRows.length > 0) {
-      corporateContext = corpRows
-        .map((r) => `[${r.perspective}] ${r.strategic_objective} — KPI: ${r.kpi} (target: ${r.target ?? "n/a"})`)
-        .join("\n");
-    }
-  }
-
-  if (!corporateContext) {
-    const { data: corporateObjectives } = await supabase
-      .from("strategic_objectives")
-      .select("perspective, objective_text")
-      .eq("plan_id", plan.id);
-    if (corporateObjectives && corporateObjectives.length > 0) {
-      corporateContext = corporateObjectives
-        .map((o) => `[${o.perspective}] ${o.objective_text}`)
-        .join("\n");
-    }
-  }
-
   const { data: themesData } = await supabase
     .from("strategic_themes")
     .select("title, intended_result")
@@ -300,6 +264,64 @@ export async function generateCascadedBSCs() {
     themesData && themesData.length > 0
       ? `Strategic themes: ${themesData.map((t) => t.title).join("; ")}`
       : "";
+
+  const { data: corporateObjectives } = await supabase
+    .from("strategic_objectives")
+    .select("perspective, objective_text")
+    .eq("plan_id", plan.id);
+  if (!corporateObjectives || corporateObjectives.length === 0) {
+    throw new Error("Corporate Strategic Objectives haven't been generated yet — complete that step first.");
+  }
+  const objectivesContext = corporateObjectives.map((o) => `[${o.perspective}] ${o.objective_text}`).join("\n");
+
+  // The entire cascade — corporate included — must be AI-generated from the
+  // plan's own already-established strategic objectives, not hand-built or
+  // left for a human to assemble from scratch. Regenerated fresh on every
+  // run (deleted first) for the same reason the executive/departmental/
+  // individual scorecards below are: a stale corporate scorecard left over
+  // from a previous org-chart shape would silently mismatch a freshly
+  // regenerated tree.
+  await supabase.from("scorecards").delete().eq("tenant_id", tenantId).eq("scorecard_type", "corporate");
+
+  const companyName = plan.company_name;
+  const companyContext = await buildCompanyContextBlock(plan);
+  const corporatePrompt = `You are an expert corporate strategist and Balanced Scorecard architect.
+You are generating the Corporate (company-wide) Balanced Scorecard for ${companyName}.
+
+This is the top of the cascade — every departmental, section, and individual scorecard in the organization will be derived from this one. It must reflect the company's overall strategic direction, not any single department's work.
+
+COMPANY INTAKE DATA:
+${companyContext}
+
+CORPORATE STRATEGIC OBJECTIVES (build this scorecard's objectives directly from these — do not invent new ones):
+${objectivesContext}
+
+${themesContext}
+
+Produce a complete corporate Balanced Scorecard covering all four perspectives (Financial, Customer & Stakeholder, Internal Processes, Organisational Capacity), one or more KPIs per objective above.`;
+
+  const corporateRows = await generateRows(corporatePrompt);
+
+  const { data: newCorpScorecard, error: corpScorecardError } = await supabase
+    .from("scorecards")
+    .insert({
+      tenant_id: tenantId,
+      plan_id: plan.id,
+      scorecard_type: "corporate",
+      name: `${companyName} — Corporate Scorecard`,
+      owner_user_id: null,
+      status: "active",
+    })
+    .select()
+    .single();
+  if (corpScorecardError) throw corpScorecardError;
+
+  await supabase.from("scorecard_rows").insert(rowsToInsert(corporateRows, newCorpScorecard.id, tenantId));
+
+  const corpScorecard = newCorpScorecard;
+  const corporateContext = corporateRows
+    .map((r) => `[${r.perspective}] ${r.strategic_objective} — KPI: ${r.kpi} (target: ${r.target ?? "n/a"})`)
+    .join("\n");
 
   // Load org positions
   const { data: positions } = await supabase
@@ -344,8 +366,6 @@ export async function generateCascadedBSCs() {
 
   // Process positions top-down (BFS)
   const queue: OrgPositionRow[] = [...(childrenOf.get(board.id) ?? [])];
-
-  const companyName = plan.company_name;
 
   // A single position's AI/DB failure no longer aborts the whole cascade —
   // every position gets a chance, and we report exactly which ones failed

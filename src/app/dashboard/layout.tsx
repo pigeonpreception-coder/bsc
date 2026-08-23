@@ -75,6 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 {planId && <Link href={`/dashboard/plan/${planId}`} className="hover:text-white">Plan</Link>}
                 {hasActivePlan && <Link href="/dashboard/onboarding" className="hover:text-white">Org Setup</Link>}
                 <Link href="/dashboard/team" className="hover:text-white">Team</Link>
+                <Link href="/dashboard/benchmarking" className="hover:text-white">Benchmarking</Link>
                 <Link href="/dashboard/settings" className="hover:text-white">Settings</Link>
               </>
             )}

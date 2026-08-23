@@ -16,7 +16,9 @@ export type NotificationType =
   | "bsc_finally_approved"
   | "bsc_returned_for_correction"
   | "bsc_unlocked"
-  | "approval_hierarchy_not_configured";
+  | "approval_hierarchy_not_configured"
+  | "bsc_review_reminder"
+  | "bsc_review_overdue_escalation";
 
 export type CreateNotificationParams = {
   tenantId: string;

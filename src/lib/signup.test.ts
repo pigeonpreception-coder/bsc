@@ -3,20 +3,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Row = Record<string, unknown>;
 
-const { state, authAdmin } = vi.hoisted(() => ({
+const { state, authAdmin, rpcMock } = vi.hoisted(() => ({
   state: {
-    insertedUsers: [] as Row[],
     insertedTenants: [] as Row[],
     deletedTenantIds: [] as string[],
     nextTenantInsertError: null as { message: string } | null,
-    nextUsersInsertError: null as { message: string } | null,
   },
   authAdmin: { deleteUser: vi.fn() },
+  rpcMock: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     auth: { admin: authAdmin },
+    rpc: rpcMock,
     from: (table: string) => ({
       insert: (row: Row) => {
         if (table === "tenants") {
@@ -35,16 +35,7 @@ vi.mock("@/lib/supabase/admin", () => ({
             }),
           };
         }
-        // users table — awaited directly, no chained select in the code under test.
-        return (async () => {
-          if (state.nextUsersInsertError) {
-            const err = state.nextUsersInsertError;
-            state.nextUsersInsertError = null;
-            return { error: err };
-          }
-          state.insertedUsers.push(row);
-          return { error: null };
-        })();
+        throw new Error(`Unexpected insert into "${table}" in this test's fake client`);
       },
       delete: () => ({
         eq: async (_column: string, id: string) => {
@@ -75,30 +66,31 @@ const baseParams = {
 
 describe("signUpNewTenant", () => {
   beforeEach(() => {
-    state.insertedUsers = [];
     state.insertedTenants = [];
     state.deletedTenantIds = [];
     state.nextTenantInsertError = null;
-    state.nextUsersInsertError = null;
     authAdmin.deleteUser.mockReset();
+    rpcMock.mockReset();
+    rpcMock.mockResolvedValue({ data: {}, error: null });
   });
 
-  it("creates a tenant and a company_admin profile for a genuinely new signup", async () => {
+  it("creates a tenant seeded with the basic tier's default seats, then provisions the company_admin via the atomic RPC", async () => {
     const supabase = fakeAuthClient({ data: { user: newUser, session: { access_token: "t" } }, error: null });
 
     const result = await signUpNewTenant(supabase, baseParams);
 
     expect(result).toEqual({ needsEmailConfirmation: false });
-    expect(state.insertedTenants).toEqual([{ company_name: "New Co", id: "tenant-new-1" }]);
-    expect(state.insertedUsers).toEqual([
-      {
-        id: "user-1",
-        email: "founder@example.com",
-        full_name: "Founder Name",
-        role: "company_admin",
-        tenant_id: "tenant-new-1",
-      },
+    expect(state.insertedTenants).toEqual([
+      { company_name: "New Co", max_users: 10, is_unlimited_users: false, id: "tenant-new-1" },
     ]);
+    expect(rpcMock).toHaveBeenCalledWith("provision_tenant_user", {
+      p_user_id: "user-1",
+      p_tenant_id: "tenant-new-1",
+      p_email: "founder@example.com",
+      p_full_name: "Founder Name",
+      p_role: "company_admin",
+      p_department: null,
+    });
   });
 
   it("reports needsEmailConfirmation when signUp returns no session", async () => {
@@ -128,7 +120,7 @@ describe("signUpNewTenant", () => {
 
     await expect(signUpNewTenant(supabase, baseParams)).rejects.toThrow("already exists");
     expect(state.insertedTenants).toEqual([]);
-    expect(state.insertedUsers).toEqual([]);
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("rolls back the auth user if the tenant insert fails", async () => {
@@ -137,11 +129,11 @@ describe("signUpNewTenant", () => {
 
     await expect(signUpNewTenant(supabase, baseParams)).rejects.toBeTruthy();
     expect(authAdmin.deleteUser).toHaveBeenCalledWith("user-1");
-    expect(state.insertedUsers).toEqual([]);
+    expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("rolls back both the auth user and the tenant if the profile insert fails", async () => {
-    state.nextUsersInsertError = { message: "insert failed" };
+  it("rolls back both the auth user and the tenant if the provisioning RPC fails", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "insert failed" } });
     const supabase = fakeAuthClient({ data: { user: newUser, session: { access_token: "t" } }, error: null });
 
     await expect(signUpNewTenant(supabase, baseParams)).rejects.toBeTruthy();

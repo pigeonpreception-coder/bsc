@@ -60,18 +60,28 @@ export async function inviteUserAccount(params: InviteUserAccountParams): Promis
     throw authError;
   }
 
-  const { error: profileError } = await admin.from("users").insert({
-    id: authUser.user.id,
-    email: params.email,
-    full_name: params.fullName,
-    role: params.role,
-    tenant_id: params.tenantId,
-    department: params.department ?? null,
+  // provision_tenant_user (migration 0023) checks the tenant's seat limit
+  // and inserts the profile row in one atomic, row-locked transaction —
+  // see its own definition for why a plain insert here can't be made
+  // race-safe from application code alone.
+  const { error: profileError } = await admin.rpc("provision_tenant_user", {
+    p_user_id: authUser.user.id,
+    p_tenant_id: params.tenantId,
+    p_email: params.email,
+    p_full_name: params.fullName,
+    p_role: params.role,
+    p_department: params.department ?? null,
   });
   if (profileError) {
     // Don't leave an orphaned login behind — that email becomes permanently
     // unusable for future signups otherwise, with no UI to find or fix it.
     await admin.auth.admin.deleteUser(authUser.user.id);
+    if (profileError.message?.startsWith("SEAT_LIMIT_REACHED:")) {
+      const maxUsers = profileError.message.split(":")[1];
+      throw new Error(
+        `Your current license allows up to ${maxUsers} users. You have reached your licensed user limit. Please upgrade your license or purchase additional user capacity before adding another user.`,
+      );
+    }
     throw profileError;
   }
 

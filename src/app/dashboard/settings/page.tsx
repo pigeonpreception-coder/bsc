@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getEntitlement } from "@/lib/licensing";
 import { CASCADE_TIERS, DEFAULT_OWN_WEIGHT_PERCENT, type CascadeTierKey } from "@/lib/cascade-weights";
 import CascadeWeightsForm from "./CascadeWeightsForm";
 
@@ -8,6 +9,8 @@ export default async function SettingsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role !== "company_admin" || !user.tenant_id) redirect("/dashboard");
+
+  const entitlement = await getEntitlement(user.tenant_id);
 
   const supabase = await createClient();
   const { data: weights } = await supabase
@@ -30,6 +33,20 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-xl font-semibold text-navy">Settings</h1>
         <p className="mt-1 text-sm text-gray-500">Tenant-wide configuration for your organisation.</p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-navy">License &amp; users</h2>
+        <p className="mt-1 text-sm text-gray-700">
+          {entitlement.isUnlimitedUsers
+            ? `Unlimited users — ${entitlement.currentUserCount} created`
+            : `${entitlement.currentUserCount} of ${entitlement.maxUsers} users`}
+        </p>
+        {!entitlement.isUnlimitedUsers && entitlement.remainingSeats === 0 && (
+          <p className="mt-1 text-xs text-amber-600">
+            You&apos;ve reached your licensed user limit. Contact your Safina account manager to add capacity.
+          </p>
+        )}
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">

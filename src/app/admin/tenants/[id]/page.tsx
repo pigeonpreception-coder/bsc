@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getEntitlement } from "@/lib/licensing";
 import LicenseStatusForm from "./LicenseStatusForm";
+import SeatLimitForm from "./SeatLimitForm";
 import CreateCompanyAdminForm from "./CreateCompanyAdminForm";
 import ResetMfaButton from "./ResetMfaButton";
 
@@ -22,6 +24,7 @@ export default async function TenantDetailPage({
     .order("created_at", { ascending: true });
 
   const hasCompanyAdmin = (users ?? []).some((u) => u.role === "company_admin");
+  const entitlement = await getEntitlement(id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -39,6 +42,24 @@ export default async function TenantDetailPage({
             </p>
           </div>
           <LicenseStatusForm tenantId={id} currentStatus={tenant.license_status} />
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-navy">Seat entitlement</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {entitlement.isUnlimitedUsers
+                ? `Unlimited users — ${entitlement.currentUserCount} created`
+                : `${entitlement.currentUserCount} of ${entitlement.maxUsers} users`}
+            </p>
+          </div>
+          <SeatLimitForm
+            tenantId={id}
+            currentMaxUsers={entitlement.maxUsers}
+            currentIsUnlimited={entitlement.isUnlimitedUsers}
+          />
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { inviteUserAccount } from "@/lib/user-invite";
 import { writeAuditLog } from "@/lib/audit-log";
+import { LICENSE_TIER_DEFAULT_SEATS, canReduceSeatsTo, type LicenseTier } from "@/lib/licensing";
 
 async function requireSuperAdmin() {
   const user = await getCurrentUser();
@@ -29,6 +30,12 @@ export async function createTenant(formData: FormData) {
     throw new Error("License end date can't be before the start date");
   }
 
+  // Falls back to 'basic''s seat defaults for any tier value that isn't a
+  // recognized key — the DB's own check constraint is the real backstop on
+  // license_tier's validity, this just keeps the entitlement engine from
+  // seeding undefined seat fields if that ever happens.
+  const seats = LICENSE_TIER_DEFAULT_SEATS[licenseTier as LicenseTier] ?? LICENSE_TIER_DEFAULT_SEATS.basic;
+
   const { data: tenant, error } = await admin
     .from("tenants")
     .insert({
@@ -37,6 +44,8 @@ export async function createTenant(formData: FormData) {
       license_start: licenseStart || null,
       license_end: licenseEnd || null,
       created_by: currentUser.id,
+      max_users: seats.maxUsers,
+      is_unlimited_users: seats.isUnlimitedUsers,
     })
     .select()
     .single();
@@ -85,6 +94,46 @@ export async function setLicenseStatus(tenantId: string, status: "active" | "sus
   });
 
   revalidatePath("/admin");
+  revalidatePath(`/admin/tenants/${tenantId}`);
+}
+
+export async function updateTenantSeats(tenantId: string, maxUsers: number, isUnlimitedUsers: boolean) {
+  const currentUser = await requireSuperAdmin();
+  const admin = createAdminClient();
+
+  if (!isUnlimitedUsers) {
+    if (!Number.isFinite(maxUsers) || maxUsers < 1) {
+      throw new Error("Seat limit must be a positive number.");
+    }
+    // The downgrade guard — never silently reduce capacity below what's
+    // already provisioned (spec: reject with an explanation, don't
+    // deactivate anyone).
+    const check = await canReduceSeatsTo(tenantId, maxUsers);
+    if (!check.allowed) throw new Error(check.reason);
+  }
+
+  const { data: previous } = await admin
+    .from("tenants")
+    .select("max_users, is_unlimited_users")
+    .eq("id", tenantId)
+    .single();
+
+  const { error } = await admin
+    .from("tenants")
+    .update({ max_users: isUnlimitedUsers ? null : maxUsers, is_unlimited_users: isUnlimitedUsers })
+    .eq("id", tenantId);
+  if (error) throw error;
+
+  await writeAuditLog(admin, {
+    tenant_id: tenantId,
+    user_id: currentUser.id,
+    action: "update_tenant_seats",
+    resource_type: "tenant",
+    resource_id: tenantId,
+    old_value: previous ?? null,
+    new_value: { max_users: isUnlimitedUsers ? null : maxUsers, is_unlimited_users: isUnlimitedUsers },
+  });
+
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 

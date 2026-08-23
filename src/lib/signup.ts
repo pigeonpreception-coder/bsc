@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { LICENSE_TIER_DEFAULT_SEATS } from "@/lib/licensing";
 
 export type SignUpNewTenantParams = {
   email: string;
@@ -74,9 +75,17 @@ export async function signUpNewTenant(
   // New tenants get the same column defaults a super_admin would leave
   // unset for any other tenant today (license_tier: 'basic', license_status:
   // 'active') — no separate trial/paywall concept exists yet in this schema.
+  // Seat entitlement (max_users/is_unlimited_users) is seeded from the
+  // 'basic' tier's default now that the entitlement engine exists — see
+  // src/lib/licensing.ts.
+  const basicSeats = LICENSE_TIER_DEFAULT_SEATS.basic;
   const { data: tenant, error: tenantError } = await admin
     .from("tenants")
-    .insert({ company_name: params.companyName })
+    .insert({
+      company_name: params.companyName,
+      max_users: basicSeats.maxUsers,
+      is_unlimited_users: basicSeats.isUnlimitedUsers,
+    })
     .select("id")
     .single();
   if (tenantError) {
@@ -84,12 +93,16 @@ export async function signUpNewTenant(
     throw tenantError;
   }
 
-  const { error: profileError } = await admin.from("users").insert({
-    id: authData.user.id,
-    email: params.email,
-    full_name: params.fullName,
-    role: "company_admin",
-    tenant_id: tenant.id,
+  // Routed through the same atomic seat-reservation RPC inviteUserAccount
+  // uses (migration 0023) — a fresh tenant always has room, but this keeps
+  // exactly one code path that ever inserts a users row, not two.
+  const { error: profileError } = await admin.rpc("provision_tenant_user", {
+    p_user_id: authData.user.id,
+    p_tenant_id: tenant.id,
+    p_email: params.email,
+    p_full_name: params.fullName,
+    p_role: "company_admin",
+    p_department: null,
   });
   if (profileError) {
     // Same "don't leave an orphaned login behind" reasoning as

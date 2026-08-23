@@ -6,7 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { computeAutoStatus } from "@/lib/scorecard";
 import { calculatePerformanceScores } from "@/lib/performance";
 import { writeAuditLog } from "@/lib/audit-log";
+import { createNotification } from "@/lib/notifications";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { parseOwnWeightPercent } from "@/lib/cascade-weights";
+
+// See src/lib/concurrency.ts — same worker-pool pattern the plan-approval
+// broadcast and cron routes use, so notifying every company_admin in a
+// larger tenant can't stall a single KPI edit behind a serial email loop.
+const NOTIFICATION_CONCURRENCY = 5;
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -78,6 +85,18 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
     update.status = computeAutoStatus(nextActual, nextTarget, nextLowerIsBetter);
   }
 
+  // A company_admin already has final sign-off authority on this scorecard,
+  // so their own actual-value edit is auto-approved rather than requiring
+  // them to separately approve themselves. A manager/staff edit (the only
+  // other path that can reach here — see the canEdit check above) resets
+  // any prior approval and puts the row up for review.
+  if (field === "actual") {
+    update.approval_status = isAdmin ? "approved" : "pending_approval";
+    update.approved_by = isAdmin ? user.id : null;
+    update.approved_at = isAdmin ? new Date().toISOString() : null;
+    update.rejection_reason = null;
+  }
+
   // responsible_person is a user id with no enum/FK check at the DB level
   // reachable from here (the column's own FK just requires *some* row in
   // public.users, any tenant) — without this, an admin could point a row
@@ -116,9 +135,91 @@ export async function updateScorecardRow(rowId: string, field: EditableField, va
 
     // Recalculate performance scores cascade
     await calculatePerformanceScores(supabase, user.tenant_id!);
+
+    if (!isAdmin) {
+      const { data: admins } = await supabase
+        .from("users")
+        .select("id, email")
+        .eq("tenant_id", user.tenant_id)
+        .eq("role", "company_admin");
+
+      const message = `${user.full_name || user.email} submitted a new value for "${row.kpi}" — awaiting your approval.`;
+      await mapWithConcurrency(admins ?? [], NOTIFICATION_CONCURRENCY, (admin) =>
+        createNotification(supabase, {
+          tenantId: user.tenant_id!,
+          userId: admin.id,
+          type: "score_pending_review",
+          message,
+          link: "/dashboard/approvals",
+          email: admin.email ? { to: admin.email, subject: "A KPI score needs your approval" } : null,
+        }),
+      );
+    }
   }
 
   revalidatePath(`/dashboard/scorecards/${row.scorecard_id}`);
+  revalidatePath("/dashboard/approvals");
+}
+
+export async function approveScorecardRow(rowId: string, decision: "approved" | "rejected", reason?: string) {
+  const { user, row, supabase } = await loadContext(rowId);
+  if (user.role !== "company_admin") throw new Error("Not authorized");
+
+  // The UI only shows this control for rows still pending review, but that's
+  // a client-side gate only — without this, a replayed/direct call could
+  // re-decide an already-approved row and re-notify its owner for no reason.
+  if (row.approval_status !== "pending_approval") return;
+
+  const trimmedReason = (reason ?? "").trim();
+  if (decision === "rejected" && !trimmedReason) {
+    throw new Error("A reason is required when rejecting a submitted value.");
+  }
+
+  const { error } = await supabase
+    .from("scorecard_rows")
+    .update({
+      approval_status: decision,
+      approved_by: user.id,
+      approved_at: new Date().toISOString(),
+      rejection_reason: decision === "rejected" ? trimmedReason : null,
+    })
+    .eq("id", rowId);
+  if (error) throw error;
+
+  await writeAuditLog(supabase, {
+    tenant_id: row.tenant_id,
+    user_id: user.id,
+    action: decision === "approved" ? "approve_score" : "reject_score",
+    resource_type: "scorecard_row",
+    resource_id: rowId,
+    old_value: { approval_status: row.approval_status },
+    new_value: { approval_status: decision, rejection_reason: decision === "rejected" ? trimmedReason : null },
+  });
+
+  if (row.responsible_person) {
+    const { data: submitter } = await supabase
+      .from("users")
+      .select("email")
+      .eq("id", row.responsible_person)
+      .maybeSingle();
+
+    const message =
+      decision === "approved"
+        ? `Your submitted value for "${row.kpi}" was approved.`
+        : `Your submitted value for "${row.kpi}" was rejected: ${trimmedReason}`;
+
+    await createNotification(supabase, {
+      tenantId: row.tenant_id,
+      userId: row.responsible_person,
+      type: decision === "approved" ? "score_approved" : "score_rejected",
+      message,
+      link: `/dashboard/scorecards/${row.scorecard_id}`,
+      email: submitter?.email ? { to: submitter.email, subject: "Your KPI submission was reviewed" } : null,
+    });
+  }
+
+  revalidatePath(`/dashboard/scorecards/${row.scorecard_id}`);
+  revalidatePath("/dashboard/approvals");
 }
 
 export async function addScorecardRow(scorecardId: string) {

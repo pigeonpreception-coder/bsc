@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge } from "./EditableCell";
+import { EditableTextCell, EditableSelectCell, EditableCheckboxCell, StatusBadge, ApprovalBadge } from "./EditableCell";
 import { updateScorecardRow, addScorecardRow, deleteScorecardRow, type EditableField } from "./row-actions";
 import {
   addScorecardColumn,
@@ -37,6 +37,8 @@ export type ScorecardRow = {
   responsible_person: string | null;
   lower_is_better: boolean | null;
   status: string;
+  approval_status: string;
+  rejection_reason: string | null;
 };
 
 export type CustomColumn = {
@@ -168,7 +170,12 @@ function renderFixedCell(
     case "measurement_frequency":
       return <EditableTextCell value={row.measurement_frequency} editable={canEditAll} onSave={(v) => save(row.id, "measurement_frequency", v)} />;
     case "actual":
-      return <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />;
+      return (
+        <div>
+          <EditableTextCell value={row.actual} editable={canEditActual} onSave={(v) => save(row.id, "actual", v)} />
+          <ApprovalBadge status={row.approval_status} rejectionReason={row.rejection_reason} />
+        </div>
+      );
     case "responsible_person":
       return <EditableSelectCell value={row.responsible_person} editable={canEditAll} onSave={(v) => save(row.id, "responsible_person", v)} options={teamOptions} />;
     case "status":

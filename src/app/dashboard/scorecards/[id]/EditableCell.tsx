@@ -193,3 +193,28 @@ export function StatusBadge({ status }: { status: string }) {
     </span>
   );
 }
+
+const APPROVAL_COLORS: Record<string, string> = {
+  pending_approval: "bg-amber-100 text-amber-700",
+  rejected: "bg-red-100 text-red-700",
+};
+
+const APPROVAL_LABELS: Record<string, string> = {
+  pending_approval: "Pending review",
+  rejected: "Rejected",
+};
+
+// Approved rows render nothing here — a pending/rejected value is the
+// exception worth flagging inline, not the steady state every row shows.
+export function ApprovalBadge({ status, rejectionReason }: { status: string; rejectionReason: string | null }) {
+  if (status !== "pending_approval" && status !== "rejected") return null;
+  return (
+    <span
+      className={`mt-1 block max-w-[160px] whitespace-normal rounded-full px-2 py-0.5 text-[10px] font-medium leading-tight ${APPROVAL_COLORS[status]}`}
+      title={status === "rejected" ? rejectionReason ?? undefined : undefined}
+    >
+      {APPROVAL_LABELS[status]}
+      {status === "rejected" && rejectionReason ? `: ${rejectionReason}` : ""}
+    </span>
+  );
+}

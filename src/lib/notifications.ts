@@ -8,7 +8,10 @@ export type NotificationType =
   | "weekly_advisory_ready"
   | "account_created"
   | "plan_approved"
-  | "account_status_changed";
+  | "account_status_changed"
+  | "score_pending_review"
+  | "score_approved"
+  | "score_rejected";
 
 export type CreateNotificationParams = {
   tenantId: string;

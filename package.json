@@ -11,22 +11,22 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
-    "@sentry/nextjs": "^10.70.0",
+    "@anthropic-ai/sdk": "^0.122.0",
+    "@sentry/nextjs": "^10.72.0",
     "@sparticuz/chromium": "^149.0.0",
-    "@supabase/ssr": "^0.12.0",
+    "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.110.0",
     "docx": "^9.7.1",
     "jszip": "^3.10.1",
-    "mammoth": "^1.12.0",
-    "next": "16.2.10",
+    "mammoth": "^1.12.2",
+    "next": "16.3.3",
     "pdf-parse": "^2.4.5",
-    "puppeteer": "^25.3.0",
+    "puppeteer": "^25.9.0",
     "puppeteer-core": "^25.3.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "recharts": "^3.9.1",
-    "resend": "^6.19.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
+    "resend": "^6.25.0",
     "server-only": "^0.0.1",
     "twilio": "^6.1.0"
   },
@@ -36,9 +36,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.3.3",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

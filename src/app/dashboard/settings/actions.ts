@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CASCADE_TIERS, parseOwnWeightPercent } from "@/lib/cascade-weights";
 import { writeAuditLog } from "@/lib/audit-log";
 
@@ -19,7 +19,7 @@ export async function updateCascadeWeights(formData: FormData) {
     nextRow[tier.subColumn] = (100 - ownPercent) / 100;
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: previous } = await supabase
     .from("cascade_weights")

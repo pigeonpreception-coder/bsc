@@ -48,7 +48,8 @@ export async function saveOrgHierarchy(hierarchyJson: string) {
     throw new Error("This organization structure is too large to save. Reduce the number of positions and try again.");
   }
 
-  const supabase = await createClient();
+  // org_positions drives the approval chain, so RLS makes it service-role-write-only.
+  const supabase = createAdminClient();
   const hierarchy: PositionNode = JSON.parse(hierarchyJson);
   const tenantId = user.tenant_id!;
 

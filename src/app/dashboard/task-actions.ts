@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { writeAuditLog } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notifications";
 
@@ -41,7 +42,7 @@ export async function markAlertRead(alertId: string) {
   const user = await getCurrentUser();
   if (!user || !user.tenant_id) throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("performance_alerts")
@@ -71,7 +72,7 @@ export async function triggerTaskGeneration() {
   const user = await getCurrentUser();
   if (!user || !user.tenant_id) throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: myPosition } = await supabase
     .from("org_positions")

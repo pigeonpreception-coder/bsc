@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { computePeriodEnd } from "@/lib/plan-period";
 import { isPathOwnedByTenant } from "@/lib/document-extract";
 import type { CascadingEntry } from "./CascadingList";
@@ -76,7 +76,10 @@ export async function saveBusinessProfileDraft(planId: string | null, data: Busi
     throw new Error("Invalid document reference.");
   }
 
-  const supabase = await createClient();
+  // strategic_plans is service-role-write-only (see
+  // 0036_lock_down_strategic_plans_and_scorecard_design.sql) — the
+  // company_admin check above is what makes this safe.
+  const supabase = createAdminClient();
 
   const payload = {
     vision: data.vision,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { FIXED_COLUMN_ORDER } from "@/lib/scorecard";
 import { writeAuditLog } from "@/lib/audit-log";
 
@@ -18,7 +18,10 @@ export async function addScorecardColumn(scorecardId: string, insertBeforeOrder?
   if (!user || user.role !== "company_admin" || !user.tenant_id)
     throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // scorecard_columns/scorecard_cell_values are service-role-write-only (see
+  // 0036_lock_down_strategic_plans_and_scorecard_design.sql) — the
+  // company_admin check above is what makes this safe.
+  const supabase = createAdminClient();
 
   // scorecardId is caller-supplied; RLS's insert check only validates the
   // new row's own tenant_id, not that scorecardId belongs to this tenant —
@@ -90,7 +93,10 @@ export async function deleteScorecardColumn(columnId: string) {
   if (!user || user.role !== "company_admin")
     throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // scorecard_columns/scorecard_cell_values are service-role-write-only (see
+  // 0036_lock_down_strategic_plans_and_scorecard_design.sql) — the
+  // company_admin check above is what makes this safe.
+  const supabase = createAdminClient();
 
   const { data: col } = await supabase
     .from("scorecard_columns")
@@ -132,7 +138,10 @@ export async function renameScorecardColumn(
   if (!user || user.role !== "company_admin")
     throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // scorecard_columns/scorecard_cell_values are service-role-write-only (see
+  // 0036_lock_down_strategic_plans_and_scorecard_design.sql) — the
+  // company_admin check above is what makes this safe.
+  const supabase = createAdminClient();
 
   const { data: col } = await supabase
     .from("scorecard_columns")
@@ -171,7 +180,10 @@ export async function updateCellValue(
   if (!user || !user.tenant_id) throw new Error("Not authorized");
   if (user.role !== "company_admin") throw new Error("Not authorized");
 
-  const supabase = await createClient();
+  // scorecard_columns/scorecard_cell_values are service-role-write-only (see
+  // 0036_lock_down_strategic_plans_and_scorecard_design.sql) — the
+  // company_admin check above is what makes this safe.
+  const supabase = createAdminClient();
 
   // row_id/column_id are only unique together globally, not per-tenant —
   // without verifying scorecardId/rowId/columnId all belong to this tenant,

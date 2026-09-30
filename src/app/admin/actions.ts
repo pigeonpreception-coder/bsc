@@ -308,6 +308,7 @@ export async function deleteTenant(formData: FormData) {
   // convention, not a database relationship.
   const userIds = await listAllTenantUserIds(admin, tenantId);
   const storagePaths = await listAllStorageObjectPaths(admin, "company-documents", tenantId);
+  const exportPaths = await listAllStorageObjectPaths(admin, "tenant-data-exports", tenantId);
 
   // The relational cascade runs first and atomically — either the tenant's
   // entire Postgres footprint goes in one transaction or none of it does.
@@ -331,7 +332,14 @@ export async function deleteTenant(formData: FormData) {
     const { error } = await admin.storage.from("company-documents").remove(storagePaths);
     if (error) {
       storageCleanupFailed = true;
-      Sentry.captureException(error, { extra: { context: "deleteTenant storage cleanup", tenantId } });
+      Sentry.captureException(error, { extra: { context: "deleteTenant storage cleanup", tenantId, bucket: "company-documents" } });
+    }
+  }
+  if (exportPaths.length > 0) {
+    const { error } = await admin.storage.from("tenant-data-exports").remove(exportPaths);
+    if (error) {
+      storageCleanupFailed = true;
+      Sentry.captureException(error, { extra: { context: "deleteTenant storage cleanup", tenantId, bucket: "tenant-data-exports" } });
     }
   }
 

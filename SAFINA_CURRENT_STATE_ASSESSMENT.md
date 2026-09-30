@@ -906,3 +906,19 @@ Picked up the tables §42 explicitly deferred (`strategic_objectives`, `strategi
 **Verified:** `tsc`, `lint`, `vitest` clean — 313 tests, no regressions.
 
 **Verified against the live Supabase project, before and after.** Run before applying `0036`, the verification script proved both holes were real: a plain staff account flipped `strategic_plans.status` straight to `'active'` (no `company_admin` check, no notification), inserted a forged `scorecard_columns` row, and inserted a forged `scorecard_cell_values` row — all three succeeded, all rolled back. After applying `0036`, all 8 checks passed: both old-policy/new-policy shape checks, all three attacks blocked (the `UPDATE` blocked by matching zero rows under the `USING` clause; the two `INSERT`s blocked with a `42501` privilege error from `WITH CHECK` — both are the RLS engine working as intended, just at different points in the write path), and tenant-scoped reads on both tables unaffected.
+
+---
+
+## 44. Eighteenth Gap-Scan Pass — Closed the RLS Backlog, Then Found a Storage-Bucket Leak
+
+Two pieces, deliberately different in character.
+
+**Part one: closed the tenant-only `for all` policy backlog across the whole schema.** Migration `0037_lock_down_remaining_plan_tables.sql` gives `strategic_objectives`, `strategic_themes`, `plan_sections`, `plan_documents`, `strategic_objective_themes`, `strategy_map_connections`, and `ai_sessions` the same tenant-scoped-`SELECT`/service-role-only-write shape as `0033`/`0035`/`0036`. Re-traced every access site of all seven (fresh grep, every write and every read) before writing it: every writer already goes through `createAdminClient()`, so unlike the last three migrations this one doesn't close an active application-level bypass — it's the defense-in-depth step of making that the only path rather than something every future PR has to keep getting right by convention. No application code changed. This clears the tenant-only-`for all` pattern from every table in the schema.
+
+**Part two: a real finding, a different bug class than the last five passes.** `exportTenantData()` (`data-export-actions.ts`, `company_admin`-only in application code) uploads its full JSON dump — every user's role and status, every scorecard and row, the strategic plan, up to 5000 audit-log entries — into the `company-documents` Storage bucket. That bucket's storage RLS (`0007_business_strategic_profile.sql`) only ever checks the tenant-folder prefix, not role, which is correct for what the bucket was actually built for (KPI evidence, uploaded company/strategic-plan documents, generated plan PDFs — all things a non-admin tenant member is meant to read). But it meant any tenant member could list and download the admin-only data export directly through the Storage API with their own session, entirely bypassing the `company_admin` gate `exportTenantData()` itself enforces — the signed URL handed to the admin who triggered it added no real protection, since the underlying object was reachable another way regardless.
+
+**The fix, migration `0038_isolate_tenant_data_exports_bucket.sql`:** a dedicated private `tenant-data-exports` bucket whose storage policies require both the tenant-folder match and `current_role() = 'company_admin'`. `exportTenantData()` switched to it. `deleteTenant()` (`admin/actions.ts`) was updated to also sweep this new bucket during tenant deletion — a residual-data gap that would otherwise have quietly reappeared, the exact class of thing §40's cleanup-pagination fix was about.
+
+**Verified:** `tsc`, `lint`, `vitest` clean — 313 tests, 1 net new (`admin/actions.test.ts` now asserts both buckets get swept on tenant deletion). `data-export-actions.test.ts` updated for the new bucket name and path shape (no application logic changed there, just the storage location).
+
+**Not yet verified against the live Supabase project.**

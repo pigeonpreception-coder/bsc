@@ -937,4 +937,4 @@ Fresh angle after five RLS-table passes in a row: Storage, the API/cron routes, 
 
 **Incidental observation.** `company-documents` has a MIME allow-list (PDF/Office/images, `0020`/`0029`) with no `application/json`, so `exportTenantData()`'s original upload into it was likely being rejected outright; the move to its own bucket in §44 fixes that as a side effect.
 
-**Verified:** `tsc`, `lint`, `vitest` clean — 316 tests, 3 net new. **Not yet verified against the live project.**
+**Verified:** `tsc`, `lint`, `vitest` clean — 316 tests, 3 net new. **Applied to the live project;** a catalog check confirmed `company_documents_update` and `company_documents_delete` no longer exist in `pg_policies`. No behavioral bypass simulation was run against `storage.objects` (its internal schema can't be safely assumed without live access).

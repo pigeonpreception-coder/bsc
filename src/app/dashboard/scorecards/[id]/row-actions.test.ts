@@ -213,6 +213,25 @@ describe("attachKpiEvidence", () => {
     expect(rowUpdateMock).not.toHaveBeenCalled();
   });
 
+  it("rejects a path in the tenant's folder that isn't under kpi-evidence", async () => {
+    getCurrentUserMock.mockResolvedValue(owner);
+    await expect(
+      attachKpiEvidence("row-1", [{ ...validEntry, url: "tenant-1/company-profile/1-profile.pdf" }]),
+    ).rejects.toThrow("Not authorized");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed entry (non-numeric size, oversized name)", async () => {
+    getCurrentUserMock.mockResolvedValue(owner);
+    await expect(
+      attachKpiEvidence("row-1", [{ ...validEntry, fileSize: "big" as unknown as number }]),
+    ).rejects.toThrow("Invalid evidence entry");
+    await expect(
+      attachKpiEvidence("row-1", [{ ...validEntry, fileName: "x".repeat(256) }]),
+    ).rejects.toThrow("Invalid evidence entry");
+    expect(rowUpdateMock).not.toHaveBeenCalled();
+  });
+
   it("lets the resolved first approver attach evidence while pending manager review", async () => {
     scorecardSingleMock.mockResolvedValue({ data: { ...editableScorecard, workflow_status: "pending_manager_review" } });
     getCurrentUserMock.mockResolvedValue(manager);

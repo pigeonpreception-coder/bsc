@@ -922,3 +922,19 @@ Two pieces, deliberately different in character.
 **Verified:** `tsc`, `lint`, `vitest` clean — 313 tests, 1 net new (`admin/actions.test.ts` now asserts both buckets get swept on tenant deletion). `data-export-actions.test.ts` updated for the new bucket name and path shape (no application logic changed there, just the storage location).
 
 **Not yet verified against the live Supabase project.**
+
+---
+
+## 45. Nineteenth Gap-Scan Pass — Stored Evidence Could Be Overwritten or Deleted by Any Tenant Member
+
+Fresh angle after five RLS-table passes in a row: Storage, the API/cron routes, and the KPI-evidence flow (§36). All four cron routes use the constant-time `isValidCronRequest()`, and `/api/sentry-check` is secret-gated; nothing to fix there.
+
+**The finding.** `company-documents`' storage policies (`0007`) let any tenant member `UPDATE` and `DELETE` every object under their tenant's folder, not just read and add. That bucket holds the KPI evidence attached to scorecards — including scorecards already finally approved and locked — the uploaded company-profile and existing-plan documents that feed every AI generation prompt, and the generated plan PDFs. Any member could therefore overwrite or delete the evidence behind an approved BSC, or swap a source document under the plan, straight through the Storage API. The app never needs this: uploads are always new, uniquely named objects, "removing" evidence only edits the row's JSON, and the only deleters are service-role (plan-export cleanup, `deleteTenant`).
+
+**The fix.** Migration `0039_company_documents_immutable_for_members.sql` drops the member `UPDATE`/`DELETE` policies (no policy means service-role only); `SELECT` and `INSERT` stay tenant-wide. `FileUploadField.tsx` no longer passes `upsert: true` (Storage upsert needs `UPDATE` permission, and the `Date.now()` filename prefix made it unnecessary).
+
+**Hardening alongside.** `attachKpiEvidence` now rejects entries whose path isn't under `<tenant>/kpi-evidence/` (previously any object in the tenant's folder, e.g. plan documents, could be attached as evidence) and validates the client-supplied `fileName`/`fileSize` shape (the whole entry is stored and rendered back). `isPathOwnedByTenant` now rejects `.`/`..` segments.
+
+**Incidental observation.** `company-documents` has a MIME allow-list (PDF/Office/images, `0020`/`0029`) with no `application/json`, so `exportTenantData()`'s original upload into it was likely being rejected outright; the move to its own bucket in §44 fixes that as a side effect.
+
+**Verified:** `tsc`, `lint`, `vitest` clean — 316 tests, 3 net new. **Not yet verified against the live project.**

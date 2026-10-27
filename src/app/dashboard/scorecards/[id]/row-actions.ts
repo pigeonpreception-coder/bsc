@@ -13,6 +13,7 @@ import { isPathOwnedByTenant } from "@/lib/document-extract";
 
 export type EvidenceEntry = { url: string; fileName: string; fileSize: number };
 const MAX_EVIDENCE_ENTRIES = 10;
+const MAX_EVIDENCE_FILE_NAME_LENGTH = 255;
 
 const ADMIN_EDITABLE_FIELDS = [
   "perspective",
@@ -187,7 +188,22 @@ export async function attachKpiEvidence(rowId: string, evidence: EvidenceEntry[]
     throw new Error(`No more than ${MAX_EVIDENCE_ENTRIES} evidence files per KPI.`);
   }
   for (const item of evidence) {
-    if (!isPathOwnedByTenant(item.url, user.tenant_id!)) throw new Error("Not authorized");
+    // The whole entry is client-supplied, not just the path: the file must be
+    // one uploaded through the evidence flow (not any object in the tenant's
+    // folder, e.g. another feature's documents), and the display fields get
+    // stored and rendered back verbatim.
+    const wellFormed =
+      typeof item.url === "string" &&
+      typeof item.fileName === "string" &&
+      item.fileName.length > 0 &&
+      item.fileName.length <= MAX_EVIDENCE_FILE_NAME_LENGTH &&
+      typeof item.fileSize === "number" &&
+      Number.isFinite(item.fileSize) &&
+      item.fileSize >= 0;
+    if (!wellFormed) throw new Error("Invalid evidence entry.");
+    if (!isPathOwnedByTenant(item.url, user.tenant_id!) || !item.url.startsWith(`${user.tenant_id}/kpi-evidence/`)) {
+      throw new Error("Not authorized");
+    }
   }
 
   const { error } = await supabase.from("scorecard_rows").update({ evidence }).eq("id", rowId);

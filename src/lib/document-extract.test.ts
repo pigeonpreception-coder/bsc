@@ -17,6 +17,10 @@ describe("isPathOwnedByTenant", () => {
   it("rejects a bare path with no folder segment at all", () => {
     expect(isPathOwnedByTenant("tenant-1", "tenant-1")).toBe(false);
   });
+
+  it("rejects a path that climbs out of the tenant folder with a .. segment", () => {
+    expect(isPathOwnedByTenant("tenant-1/../tenant-2/secret.pdf", "tenant-1")).toBe(false);
+  });
 });
 
 describe("isPrivateOrReservedIp", () => {

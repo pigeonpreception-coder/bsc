@@ -52,7 +52,7 @@ export default function FileUploadField({
 
     const { error: uploadError } = await supabase.storage
       .from("company-documents")
-      .upload(storagePath, file, { upsert: true });
+      .upload(storagePath, file);
 
     setIsUploading(false);
     if (uploadError) {

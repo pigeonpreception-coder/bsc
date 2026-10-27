@@ -258,7 +258,10 @@ type PlanDocumentFields = {
 // client, an unvalidated path here would let one tenant's plan pull
 // another tenant's document content into its own AI-generated output.
 export function isPathOwnedByTenant(path: string, tenantId: string): boolean {
-  return path.startsWith(`${tenantId}/`);
+  if (!path.startsWith(`${tenantId}/`)) return false;
+  // A `..` segment could address a sibling tenant's folder if anything
+  // downstream ever normalized the key.
+  return !path.split("/").some((segment) => segment === ".." || segment === ".");
 }
 
 /**

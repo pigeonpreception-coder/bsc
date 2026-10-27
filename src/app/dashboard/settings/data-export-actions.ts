@@ -57,9 +57,13 @@ export async function exportTenantData() {
     audit_log: auditLog ?? [],
   };
 
-  const path = `${tenantId}/data-exports/tenant-export-${Date.now()}.json`;
+  // A dedicated bucket, not company-documents — that bucket's storage RLS
+  // is intentionally tenant-wide read (KPI evidence, plan documents), which
+  // would let any tenant member download this admin-only export directly.
+  // See 0038_isolate_tenant_data_exports_bucket.sql.
+  const path = `${tenantId}/tenant-export-${Date.now()}.json`;
   const { error: uploadError } = await admin.storage
-    .from("company-documents")
+    .from("tenant-data-exports")
     .upload(path, Buffer.from(JSON.stringify(exportPayload, null, 2), "utf-8"), { contentType: "application/json" });
   if (uploadError) throw uploadError;
 
@@ -74,7 +78,7 @@ export async function exportTenantData() {
   });
 
   const { data: signed, error: signError } = await admin.storage
-    .from("company-documents")
+    .from("tenant-data-exports")
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
   if (signError) throw signError;
 

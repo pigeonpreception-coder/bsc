@@ -26,9 +26,9 @@ vi.mock("@/lib/supabase/admin", () => ({
       return { select: () => chain };
     },
     storage: {
-      from: () => ({
-        upload: (...args: unknown[]) => uploadMock(...args),
-        createSignedUrl: (...args: unknown[]) => signedUrlMock(...args),
+      from: (bucket: string) => ({
+        upload: (...args: unknown[]) => uploadMock(bucket, ...args),
+        createSignedUrl: (...args: unknown[]) => signedUrlMock(bucket, ...args),
       }),
     },
   }),
@@ -63,7 +63,8 @@ describe("exportTenantData", () => {
     const result = await exportTenantData();
 
     expect(uploadMock).toHaveBeenCalledWith(
-      expect.stringMatching(/^tenant-1\/data-exports\/tenant-export-\d+\.json$/),
+      "tenant-data-exports",
+      expect.stringMatching(/^tenant-1\/tenant-export-\d+\.json$/),
       expect.any(Buffer),
       { contentType: "application/json" },
     );
@@ -81,7 +82,7 @@ describe("exportTenantData", () => {
 
     await exportTenantData();
 
-    const [, buffer] = uploadMock.mock.calls[0];
+    const [, , buffer] = uploadMock.mock.calls[0];
     const payload = JSON.parse((buffer as Buffer).toString("utf-8"));
     expect(payload.tenant.company_name).toBe("Acme Ltd");
     expect(payload.scorecard_rows).toEqual([{ id: "row-1", kpi: "Revenue" }]);

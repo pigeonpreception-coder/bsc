@@ -11,6 +11,7 @@ const {
   usersListMock,
   storageListMock,
   storageRemoveMock,
+  storageFromMock,
   authDeleteUserMock,
 } = vi.hoisted(() => ({
   getCurrentUserMock: vi.fn(),
@@ -23,6 +24,7 @@ const {
   usersListMock: vi.fn(),
   storageListMock: vi.fn(),
   storageRemoveMock: vi.fn(),
+  storageFromMock: vi.fn(),
   authDeleteUserMock: vi.fn(),
 }));
 
@@ -57,7 +59,12 @@ vi.mock("@/lib/supabase/admin", () => ({
       }
       throw new Error(`Unexpected table "${table}" in this test's fake client`);
     },
-    storage: { from: () => ({ list: storageListMock, remove: storageRemoveMock }) },
+    storage: {
+      from: (bucket: string) => {
+        storageFromMock(bucket);
+        return { list: storageListMock, remove: storageRemoveMock };
+      },
+    },
     auth: { admin: { deleteUser: authDeleteUserMock } },
   }),
 }));
@@ -129,6 +136,7 @@ describe("deleteTenant", () => {
     usersListMock.mockReset().mockResolvedValue({ data: [{ id: "user-a" }, { id: "user-b" }] });
     storageListMock.mockReset().mockResolvedValue({ data: [{ name: "file1.pdf", id: "obj-1" }] });
     storageRemoveMock.mockReset().mockResolvedValue({ error: null });
+    storageFromMock.mockReset();
     authDeleteUserMock.mockReset().mockResolvedValue({ error: null });
   });
 
@@ -169,6 +177,8 @@ describe("deleteTenant", () => {
     expect(authDeleteUserMock).toHaveBeenCalledWith("user-a");
     expect(authDeleteUserMock).toHaveBeenCalledWith("user-b");
     expect(storageRemoveMock).toHaveBeenCalledWith(["tenant-1/file1.pdf"]);
+    expect(storageFromMock).toHaveBeenCalledWith("company-documents");
+    expect(storageFromMock).toHaveBeenCalledWith("tenant-data-exports");
     expect(writeAuditLogMock).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -196,11 +206,19 @@ describe("deleteTenant", () => {
   it("pages through more than one page of storage objects rather than silently dropping the rest", async () => {
     const firstPage = Array.from({ length: 1000 }, (_, i) => ({ name: `file-${i}.pdf`, id: `obj-${i}` }));
     const secondPage = [{ name: "file-1000.pdf", id: "obj-1000" }];
-    storageListMock.mockReset().mockResolvedValueOnce({ data: firstPage }).mockResolvedValueOnce({ data: secondPage });
+    // Third+ call is the tenant-data-exports bucket's own pagination loop —
+    // give it an empty page so this test stays focused on company-documents.
+    storageListMock
+      .mockReset()
+      .mockResolvedValueOnce({ data: firstPage })
+      .mockResolvedValueOnce({ data: secondPage })
+      .mockResolvedValue({ data: [] });
 
     await deleteTenant(formDataFor({ tenant_id: "tenant-1", confirm_name: "Acme Ltd", reason: "test" }));
 
-    expect(storageListMock).toHaveBeenCalledTimes(2);
+    // 2 calls to page through company-documents, 1 more for the
+    // tenant-data-exports bucket's own (single, empty-page) sweep.
+    expect(storageListMock).toHaveBeenCalledTimes(3);
     const removedPaths = storageRemoveMock.mock.calls[0][0] as string[];
     expect(removedPaths).toContain("tenant-1/file-0.pdf");
     expect(removedPaths).toContain("tenant-1/file-1000.pdf");

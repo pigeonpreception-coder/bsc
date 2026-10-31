@@ -47,6 +47,6 @@ export async function sendNotificationEmail(to: string, subject: string, message
       : `<p>${safeMessage}</p>`,
   });
   if (error) {
-    Sentry.captureException(error, { extra: { to, subject } });
+    Sentry.captureException(error, { extra: { subject } });
   }
 }

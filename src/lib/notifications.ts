@@ -41,6 +41,14 @@ export type CreateNotificationParams = {
 const BYPASS_EMAIL_PREFERENCE: ReadonlySet<NotificationType> = new Set(["account_status_changed"]);
 const BYPASS_SMS_PREFERENCE: ReadonlySet<NotificationType> = new Set(["account_status_changed"]);
 
+// What gets attached to a Sentry event on failure: ids and type only. The
+// message text, recipient email and phone number are personal data (and the
+// message can quote KPI/company content) that has no business leaving for a
+// third-party error tracker.
+function scrubbedNotificationContext(params: CreateNotificationParams) {
+  return { tenantId: params.tenantId, userId: params.userId, type: params.type };
+}
+
 // Fire-and-forget, like the audit_log inserts elsewhere in this codebase —
 // a failure to write a notification (or its email) shouldn't break the
 // action that triggered it.
@@ -55,7 +63,7 @@ export async function createNotification(supabase: SupabaseClient, params: Creat
   if (error) {
     // Same gap writeAuditLog() closed for audit_log — a failed insert here
     // was previously invisible, with no signal anywhere it hadn't happened.
-    Sentry.captureException(error, { extra: { createNotificationParams: params } });
+    Sentry.captureException(error, { extra: { notification: scrubbedNotificationContext(params) } });
   }
 
   if (params.email || params.sms) {
@@ -88,7 +96,7 @@ export async function createNotification(supabase: SupabaseClient, params: Creat
         // "fire-and-forget" this function's own comment promises.
         await sendNotificationEmail(params.email.to, params.email.subject, params.message, params.link);
       } catch (err) {
-        Sentry.captureException(err, { extra: { createNotificationParams: params } });
+        Sentry.captureException(err, { extra: { notification: scrubbedNotificationContext(params) } });
       }
     }
 
@@ -96,7 +104,7 @@ export async function createNotification(supabase: SupabaseClient, params: Creat
       try {
         await sendNotificationSms(params.sms.to, params.message);
       } catch (err) {
-        Sentry.captureException(err, { extra: { createNotificationParams: params } });
+        Sentry.captureException(err, { extra: { notification: scrubbedNotificationContext(params) } });
       }
     }
   }

@@ -68,6 +68,8 @@ describe("sendNotificationSms", () => {
     createMock.mockRejectedValueOnce(sendError);
 
     await expect(sendNotificationSms("bad-number", "Hello")).resolves.toBeUndefined();
-    expect(captureExceptionMock).toHaveBeenCalledWith(sendError, expect.anything());
+    expect(captureExceptionMock).toHaveBeenCalledWith(sendError);
+    // The recipient's phone number is personal data and must not go to Sentry.
+    expect(JSON.stringify(captureExceptionMock.mock.calls)).not.toContain("bad-number");
   });
 });

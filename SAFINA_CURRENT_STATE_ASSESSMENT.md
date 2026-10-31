@@ -976,3 +976,17 @@ Two findings, both different from the previous five passes: dependency vulnerabi
 **Not done, optional hardening:** also banning the auth user (`auth.admin.updateUserById(..., { ban_duration })`) on suspend/deactivate would stop token refresh at the Auth layer. Skipped because the database-level cut-off is authoritative and a ban adds a second state to keep in sync on reactivation.
 
 **Verified:** `tsc`, `lint`, `vitest` clean — 320 tests, 4 net new. **Not yet verified against the live project.**
+
+---
+
+## 49. Twenty-Second Gap-Scan Pass — Any Member Could Read, and Forge, the Audit Trail
+
+**Open item carried over:** migration `0041` (§48) was applied and PR #26 merged, but the post-migration run of its verification script (expecting `B1`/`B2` to flip from `FAIL` to `PASS`) was not reported back; the pre-migration run did confirm the hole (suspended user and suspended-tenant user both still read tenant data). Treat `0041` as applied but not yet confirmed effective.
+
+**1. `audit_log` was readable and writable by every tenant member.** Its `SELECT` and `INSERT` policies (`0001_init.sql`) were tenant-only. Every entry for a tenant — every user's actions, with `old_value`/`new_value` holding whole rows (profile changes including phone numbers, scorecard edits, team changes, who exported data) — could be read by any member through the API, although no page shows the log to anyone and its only reader is the `company_admin` data export (service role). And any member could insert an entry for their tenant naming anyone as the actor, forging the trail that exists to attribute actions. Migration `0042_audit_log_admin_read_and_no_forgery.sql`: reads are `company_admin` (own tenant) or `super_admin`; inserts must name the caller as the actor (`user_id = auth.uid()`). Every audit call site already passes the acting user's id, and those using the service-role client bypass RLS, so nothing legitimate changes (checked all ~35 `writeAuditLog` call sites).
+
+**2. Personal data was being sent to Sentry on failures.** On a failed write or send, `writeAuditLog` attached the entire entry (including `old_value`/`new_value`), `createNotification` attached its whole params object (message text, recipient email, phone number), and the email and SMS senders attached the recipient address/number. All now send identifiers or non-personal fields only (`tenant_id`/`user_id`/`action`/`resource_*`; `tenantId`/`userId`/`type`; the email subject). Tests updated, plus a new one asserting `old_value`/`new_value` never reach Sentry.
+
+**Observed, not changed:** there is no Content-Security-Policy header (only `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`). The code has no `dangerouslySetInnerHTML`/`innerHTML` sinks and React escapes output, so this is defense in depth; a nonce-based CSP for Next's inline scripts is a real piece of work and was left out. `users_select` still exposes colleagues' phone numbers to any tenant member (RLS cannot hide a single column; fixing it means moving phone off the shared `users` table).
+
+**Verified:** `tsc`, `lint`, `vitest` clean — 321 tests, 1 net new. **`0042` not yet verified against the live project.**

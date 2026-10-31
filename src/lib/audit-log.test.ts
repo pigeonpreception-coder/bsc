@@ -38,4 +38,14 @@ describe("writeAuditLog", () => {
     await expect(writeAuditLog(client, entry)).resolves.toBeUndefined();
     expect(captureExceptionMock).toHaveBeenCalledWith(dbError, { extra: { auditLogEntry: entry } });
   });
+
+  it("does not send old_value/new_value (whole rows, possibly personal data) to Sentry", async () => {
+    const { client } = fakeClient({ error: { message: "boom" } });
+
+    await writeAuditLog(client, { ...entry, old_value: { phone: "+250700000000" }, new_value: { email: "a@b.com" } });
+
+    const [, context] = captureExceptionMock.mock.calls.at(-1)!;
+    expect(JSON.stringify(context)).not.toContain("+250700000000");
+    expect(JSON.stringify(context)).not.toContain("a@b.com");
+  });
 });

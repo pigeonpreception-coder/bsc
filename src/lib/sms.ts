@@ -26,6 +26,6 @@ export async function sendNotificationSms(to: string, message: string): Promise<
   try {
     await twilioClient.messages.create({ to, from, body: message });
   } catch (err) {
-    Sentry.captureException(err, { extra: { to } });
+    Sentry.captureException(err);
   }
 }

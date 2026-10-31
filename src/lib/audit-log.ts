@@ -23,6 +23,9 @@ export type AuditLogEntry = {
 export async function writeAuditLog(supabase: SupabaseClient, entry: AuditLogEntry): Promise<void> {
   const { error } = await supabase.from("audit_log").insert(entry);
   if (error) {
-    Sentry.captureException(error, { extra: { auditLogEntry: entry } });
+    // Identifiers only: old_value/new_value can hold whole rows (profiles,
+    // emails, scorecard content) that shouldn't be shipped to a third party.
+    const { tenant_id, user_id, action, resource_type, resource_id } = entry;
+    Sentry.captureException(error, { extra: { auditLogEntry: { tenant_id, user_id, action, resource_type, resource_id } } });
   }
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import * as Sentry from "@sentry/nextjs";
@@ -24,6 +26,7 @@ export async function createTenant(formData: FormData) {
   const admin = createAdminClient();
 
   const companyName = String(formData.get("company_name") ?? "").trim();
+  assertMaxLength(companyName, TEXT_LIMITS.companyName, "Company name");
   const licenseTier = String(formData.get("license_tier") ?? "basic");
   const licenseStart = String(formData.get("license_start") ?? "");
   const licenseEnd = String(formData.get("license_end") ?? "");
@@ -194,6 +197,7 @@ export async function createCompanyAdmin(formData: FormData) {
   const tenantId = String(formData.get("tenant_id") ?? "");
   const email = String(formData.get("email") ?? "").trim();
   const fullName = String(formData.get("full_name") ?? "").trim();
+  assertMaxLength(fullName, TEXT_LIMITS.personName, "Name");
 
   if (!tenantId || !email) {
     throw new Error("Tenant and email are required");
@@ -286,6 +290,7 @@ export async function deleteTenant(formData: FormData) {
   const tenantId = String(formData.get("tenant_id") ?? "");
   const confirmName = String(formData.get("confirm_name") ?? "").trim();
   const reason = String(formData.get("reason") ?? "").trim();
+  assertMaxLength(reason, TEXT_LIMITS.longText, "Reason");
   if (!tenantId) throw new Error("Missing tenant");
   if (!reason) throw new Error("A reason is required to delete a tenant.");
 

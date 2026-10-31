@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -103,6 +105,8 @@ export async function assignTask(formData: FormData) {
   const assigneeId = String(formData.get("assignee_id") ?? "");
   const title = String(formData.get("task_title") ?? "").trim();
   const description = String(formData.get("task_description") ?? "").trim();
+  assertMaxLength(title, TEXT_LIMITS.title, "Task title");
+  assertMaxLength(description, TEXT_LIMITS.longText, "Task description");
   const priority = String(formData.get("task_priority") ?? "medium");
   const dueDate = String(formData.get("task_date") ?? "");
 

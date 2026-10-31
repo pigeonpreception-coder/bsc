@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { checkSignupRateLimit, recordSignupAttempt } from "@/lib/rate-limit";
@@ -17,6 +19,9 @@ export async function signUp(formData: FormData): Promise<SignUpNewTenantResult>
   if (!email || !password || !fullName || !companyName) {
     throw new Error("All fields are required.");
   }
+  assertMaxLength(email, TEXT_LIMITS.email, "Email");
+  assertMaxLength(fullName, TEXT_LIMITS.personName, "Name");
+  assertMaxLength(companyName, TEXT_LIMITS.companyName, "Company name");
   // Genuinely new for this codebase: the password-reset flow (§19 of the
   // assessment doc) has no app-owned server code in its path to enforce
   // this against, since it goes straight through the browser SDK. Signup is

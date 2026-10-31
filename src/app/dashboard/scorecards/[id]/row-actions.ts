@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { revalidatePath } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
@@ -91,6 +93,7 @@ async function canEditRowActual(supabase: SupabaseClient, scorecard: ScorecardWo
 
 export async function updateScorecardRow(rowId: string, field: EditableField, value: string) {
   if (!ADMIN_EDITABLE_FIELDS.includes(field)) throw new Error("Invalid field");
+  assertMaxLength(value, TEXT_LIMITS.longText, "Value");
 
   const { user, row, scorecard, supabase } = await loadContext(rowId);
   const isAdmin = user.role === "company_admin";

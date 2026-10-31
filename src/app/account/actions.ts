@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { getCurrentUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -17,6 +19,8 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const phone = String(formData.get("phone") ?? "").trim();
 
   if (!fullName) throw new Error("Name is required.");
+  assertMaxLength(fullName, TEXT_LIMITS.personName, "Name");
+  assertMaxLength(phone, TEXT_LIMITS.phone, "Phone number");
 
   const supabase = await createClient();
   const { error } = await supabase

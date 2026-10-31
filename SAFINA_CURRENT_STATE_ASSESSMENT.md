@@ -990,3 +990,17 @@ Two findings, both different from the previous five passes: dependency vulnerabi
 **Observed, not changed:** there is no Content-Security-Policy header (only `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`). The code has no `dangerouslySetInnerHTML`/`innerHTML` sinks and React escapes output, so this is defense in depth; a nonce-based CSP for Next's inline scripts is a real piece of work and was left out. `users_select` still exposes colleagues' phone numbers to any tenant member (RLS cannot hide a single column; fixing it means moving phone off the shared `users` table).
 
 **Verified:** `tsc`, `lint`, `vitest` clean — 321 tests, 1 net new. **`0042` not yet verified against the live project.**
+
+---
+
+## 50. Twenty-Third Gap-Scan Pass — Free Text Had No Length Limit Anywhere
+
+**Open items carried over:** `0042` (§49) is merged in the repo but its application to the live project has not been confirmed; `0041`'s post-migration verification result (§48/§49) is still outstanding.
+
+**The finding.** A survey of every Server Action that accepts free text found length caps on exactly three things — the business-profile payload (§19), the org-hierarchy JSON (§19), and KPI evidence (§45). Everything else — signup name and company name, profile name and phone, team-member name and department, task title and description, scorecard cell values and column labels, approval/rejection comments, the unlock reason, the tenant-deletion reason — accepted anything up to Next's ~1MB request-body cap. Those values are not just stored: they are re-emitted into emails, SMS bodies (billed per segment), in-app notifications, AI prompts, exported documents and the immutable `scorecard_versions` snapshots. Self-serve signup (§28) makes the largest ones reachable by anyone with no account at all.
+
+**The fix.** A shared `src/lib/input-limits.ts` (`TEXT_LIMITS`: email 254, person name 120, company name 200, department 100, phone 32, short label 100, title 200, long text 2000; `assertMaxLength()` throwing a field-named error) applied at the top of each of those actions (27 call sites across 8 files). No behavior changes for normal input. `updateScorecardRow`, `updateCellValue`, and the four workflow comment/reason fields use the long-text limit.
+
+**Considered, not changed:** the signup password has only a minimum length (Supabase's own project-level policy is the real control); an attacker mass-creating tenants is bounded by the existing signup rate limit (§28), not by anything new here.
+
+**Verified:** `tsc`, `lint`, `vitest` clean — 323 tests, 2 net new. No migration in this pass.

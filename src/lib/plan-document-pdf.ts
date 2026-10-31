@@ -34,6 +34,17 @@ export async function renderPlanPdf(model: PlanDocumentModel): Promise<Buffer> {
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
+    // The document is fully self-contained (inline CSS, system fonts, no
+    // scripts or external resources), so nothing legitimate needs JavaScript or
+    // the network. Disabling both means even a markup-injection slip-through
+    // can't execute script or make requests (SSRF) from the server.
+    await page.setJavaScriptEnabled(false);
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.startsWith("data:") || url.startsWith("about:")) void request.continue();
+      else void request.abort();
+    });
     await page.setContent(html, { waitUntil: "load" });
     const pdf = await page.pdf({
       format: "A4",

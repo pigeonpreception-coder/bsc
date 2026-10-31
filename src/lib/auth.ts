@@ -18,6 +18,13 @@ export function isBlockedUserStatus(status: UserStatus): boolean {
   return status === "suspended" || status === "deactivated";
 }
 
+/** A user whose tenant row can't be read at all is blocked too: since
+ *  0041, current_tenant_id() is NULL for a suspended/expired tenant (or a
+ *  non-active user), so RLS hides the row instead of exposing its status. */
+export function isTenantAccessBlocked(tenant: { license_status: string } | null): boolean {
+  return !tenant || tenant.license_status === "suspended" || tenant.license_status === "expired";
+}
+
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = await createClient();
   const {
@@ -53,7 +60,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       .eq("id", profile.tenant_id)
       .single();
 
-    if (tenant?.license_status === "suspended" || tenant?.license_status === "expired") {
+    if (isTenantAccessBlocked(tenant)) {
       return null;
     }
   }

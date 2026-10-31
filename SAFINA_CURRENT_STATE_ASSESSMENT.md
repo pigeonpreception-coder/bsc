@@ -938,3 +938,15 @@ Fresh angle after five RLS-table passes in a row: Storage, the API/cron routes, 
 **Incidental observation.** `company-documents` has a MIME allow-list (PDF/Office/images, `0020`/`0029`) with no `application/json`, so `exportTenantData()`'s original upload into it was likely being rejected outright; the move to its own bucket in §44 fixes that as a side effect.
 
 **Verified:** `tsc`, `lint`, `vitest` clean — 316 tests, 3 net new. **Applied to the live project;** a catalog check confirmed `company_documents_update` and `company_documents_delete` no longer exist in `pg_policies`. No behavioral bypass simulation was run against `storage.objects` (its internal schema can't be safely assumed without live access).
+
+---
+
+## 46. Migration Drift Found Again, Further Back — `0019`–`0023` Had Never Been Applied
+
+§40 reported the live project's schema as "stuck around `0023`" and applied `0024`–`0033`. That diagnosis was wrong about the starting point. Applying `0037` failed with `relation "public.strategy_map_connections" does not exist`, and a table/column/function inventory against the live project showed five earlier migrations had never run: `0019` (drop `user_permissions`), `0020` (bucket size limit), `0021` (`login_attempts.action`), `0022` (strategy map table and `strategic_objectives.map_order`), and `0023` (`tenants.max_users`/`is_unlimited_users` and the `provision_tenant_user` function). They were applied together as one catch-up script, with `0020` and `0029`'s bucket settings merged so applying `0020` after the fact would not narrow the MIME allow-list back to exclude images.
+
+**What had been broken in production until then:** every account invite and self-serve signup calls `provision_tenant_user`, which did not exist; login and password-reset rate limiting inserted an `action` column that did not exist, so attempts were likely not being recorded; the strategy map could not be generated; the document bucket had no server-side size limit; and the `user_permissions` table was still present.
+
+**Also confirmed applied the same day:** `0037` and `0038` (§44) and `0039` (§45). A final three-row check returned `true` for all of: the seven `*_write` policies from `0037`, the private `tenant-data-exports` bucket, and the `provision_tenant_user` function plus `login_attempts.action` plus `strategy_map_connections`.
+
+**Why this keeps happening, and what it implies.** Nothing connects `supabase/migrations/` to the live project; every migration is applied by hand through the SQL Editor, and that has now silently failed to happen for 15 of 39 migrations at various points (§40's ten, plus these five). Any statement in this document that a migration is "applied" or a feature "works" is only as good as the last explicit catalog check against the live project. Two things would remove the gap: wiring `supabase db push` (or the Supabase GitHub integration) into deploys, or at minimum keeping a standing migration-status query as a pre-launch gate. Worth doing before any real customer is onboarded.

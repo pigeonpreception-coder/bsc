@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
@@ -23,6 +25,9 @@ export async function addTeamMember(formData: FormData) {
   if (!email || !department) {
     throw new Error("Email and department are required");
   }
+  assertMaxLength(email, TEXT_LIMITS.email, "Email");
+  assertMaxLength(fullName, TEXT_LIMITS.personName, "Name");
+  assertMaxLength(department, TEXT_LIMITS.department, "Department");
   if (!["manager", "staff", "viewer"].includes(role)) {
     throw new Error("Invalid role");
   }

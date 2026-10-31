@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -134,6 +136,7 @@ export async function renameScorecardColumn(
   columnId: string,
   newLabel: string
 ) {
+  assertMaxLength(newLabel, TEXT_LIMITS.shortLabel, "Column name");
   const user = await getCurrentUser();
   if (!user || user.role !== "company_admin")
     throw new Error("Not authorized");
@@ -176,6 +179,7 @@ export async function updateCellValue(
   columnId: string,
   value: string
 ) {
+  assertMaxLength(value, TEXT_LIMITS.longText, "Value");
   const user = await getCurrentUser();
   if (!user || !user.tenant_id) throw new Error("Not authorized");
   if (user.role !== "company_admin") throw new Error("Not authorized");

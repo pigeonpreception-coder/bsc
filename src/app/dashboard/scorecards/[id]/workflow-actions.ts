@@ -1,5 +1,7 @@
 "use server";
 
+import { assertMaxLength, TEXT_LIMITS } from "@/lib/input-limits";
+
 import { revalidatePath } from "next/cache";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getCurrentUser } from "@/lib/auth";
@@ -175,6 +177,7 @@ export async function submitManagerFirstApproval(scorecardId: string, decision: 
   if (chain.blockedReason || chain.firstApproverId !== user.id) throw new Error("Not authorized");
 
   const trimmedComments = (comments ?? "").trim();
+  assertMaxLength(trimmedComments, TEXT_LIMITS.longText, "Comments");
   if (decision === "rejected" && !trimmedComments) {
     throw new Error("A reason is required when returning a BSC for correction.");
   }
@@ -258,6 +261,7 @@ export async function submitDivisionHeadFinalApproval(scorecardId: string, decis
   if (chain.blockedReason || chain.finalApproverId !== user.id) throw new Error("Not authorized");
 
   const trimmedComments = (comments ?? "").trim();
+  assertMaxLength(trimmedComments, TEXT_LIMITS.longText, "Comments");
   if (decision === "rejected" && !trimmedComments) {
     throw new Error("A reason is required when returning a BSC for correction.");
   }
@@ -344,6 +348,7 @@ export async function unlockScorecard(scorecardId: string, reason: string) {
   if (scorecard.workflow_status !== "locked") throw new Error("Only a locked BSC can be unlocked.");
 
   const trimmedReason = reason.trim();
+  assertMaxLength(trimmedReason, TEXT_LIMITS.longText, "Reason");
   if (!trimmedReason) throw new Error("A reason is required to unlock a BSC.");
 
   const nextMajor = scorecard.version_major + 1;

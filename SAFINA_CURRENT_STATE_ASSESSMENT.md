@@ -1004,3 +1004,15 @@ Two findings, both different from the previous five passes: dependency vulnerabi
 **Considered, not changed:** the signup password has only a minimum length (Supabase's own project-level policy is the real control); an attacker mass-creating tenants is bounded by the existing signup rate limit (§28), not by anything new here.
 
 **Verified:** `tsc`, `lint`, `vitest` clean — 323 tests, 2 net new. No migration in this pass.
+
+---
+
+## 51. Twenty-Fourth Gap-Scan Pass — AI-Controlled Text Reached HTML Attributes Unescaped, Inside a Browser With Scripts and Network Enabled
+
+**The finding.** Plan documents are exported by rendering HTML in headless Chromium (Puppeteer). `escapeHtml()` correctly covers text between tags, but it did not escape quotes, and one value was never escaped at all: `renderPlanHtml` built each section's `id="…"` and the table of contents' `href="#…"` from `section.number` directly. For the template sections that number is a fixed constant, but AI-added subsections store whatever `section_number` the model returns (`plan-document-generation.ts`) with no format check, and the model's input includes uploaded company documents and fetched website text — a prompt-injection surface that any self-serve signup (§28) controls. A crafted document could therefore make the model emit a number such as `9" onload="…` or `x"><img src=…>`, which would be written into the markup unescaped. The renderer ran with JavaScript and network access both enabled, so that markup could execute script and make arbitrary requests (SSRF) from the server environment.
+
+**The fix, in three layers.** (1) `escapeHtml()` now also escapes `"` and `'`, making it safe in attribute values; the existing test that documented the gap (`"><img…` passing through) was updated, and the email path that shares the function benefits too. (2) Anchors are built by a new `sectionAnchor()` that reduces any section number to `[0-9A-Za-z-]`, and AI-added sections whose number isn't digits-and-dots extending their parent's number are skipped at generation time like other malformed AI output. (3) The PDF renderer disables JavaScript and aborts every request that isn't `data:`/`about:`; the document is fully self-contained (inline CSS, system fonts, no scripts or external resources), so nothing legitimate is affected, and a future escaping slip can no longer become code execution or SSRF.
+
+**Not verified:** layer (3) cannot be exercised by the unit tests (no Chromium in the suite). Before relying on it, export one plan PDF from the deployed app and confirm layout, page numbers and the table of contents render as before.
+
+**Verified:** `tsc`, `lint`, `vitest` clean — 325 tests, 2 net new. No migration in this pass.

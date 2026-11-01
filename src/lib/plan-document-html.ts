@@ -8,6 +8,12 @@ import { escapeHtml } from "@/lib/html-escape";
 const NAVY = "#002147";
 const GOLD = "#C9A84C";
 
+// section.number can originate from AI output and is used inside HTML
+// attribute values (id, href), so reduce it to characters that can't break out.
+export function sectionAnchor(number: string): string {
+  return `sec-${number.replace(/[^0-9A-Za-z]/g, "-")}`;
+}
+
 function renderBscTable(section: PlanDocumentSection): string {
   const bsc = section.bscTable;
   if (!bsc) {
@@ -66,7 +72,7 @@ function renderOrgStructure(section: PlanDocumentSection): string {
 
 function renderSection(section: PlanDocumentSection): string {
   const tag = section.depth === 1 ? "h1" : section.depth === 2 ? "h2" : "h3";
-  const anchor = `sec-${section.number.replace(/\./g, "-")}`;
+  const anchor = sectionAnchor(section.number);
   const heading = `<${tag} id="${anchor}" class="section-heading depth-${section.depth}">${escapeHtml(section.number)}. ${escapeHtml(section.title)}</${tag}>`;
   const pageBreakClass = section.depth === 1 ? " page-break" : "";
 
@@ -102,7 +108,7 @@ function renderSection(section: PlanDocumentSection): string {
 function renderToc(sections: PlanDocumentSection[]): string {
   const items = sections
     .map((s) => {
-      const anchor = `sec-${s.number.replace(/\./g, "-")}`;
+      const anchor = sectionAnchor(s.number);
       return `<li class="toc-depth-${s.depth}"><a href="#${anchor}">${escapeHtml(s.number)}. ${escapeHtml(s.title)}</a></li>`;
     })
     .join("");

@@ -200,6 +200,10 @@ Call the submit_plan_sections tool with your answer.`;
   for (const extra of extraSections) {
     const parentNode = extra.parent_section_number ? nodeByNumber.get(extra.parent_section_number) : undefined;
     if (!extra.parent_section_number || !parentNode || !parentNode.isAiAddable) continue; // malformed AI output — skip rather than fail the whole batch
+    // The number is stored and later rendered into HTML attributes, and the AI's
+    // input includes uploaded documents and fetched web pages (prompt-injection
+    // surface), so it must look like a real section number under its parent.
+    if (!/^\d+(\.\d+)+$/.test(extra.section_number) || !extra.section_number.startsWith(`${extra.parent_section_number}.`)) continue;
     const list = extraByParentNumber.get(extra.parent_section_number) ?? [];
     list.push(extra);
     extraByParentNumber.set(extra.parent_section_number, list);

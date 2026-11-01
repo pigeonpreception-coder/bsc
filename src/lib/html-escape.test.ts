@@ -11,11 +11,12 @@ describe("escapeHtml", () => {
   });
 
   it("neutralizes a script-tag injection attempt", () => {
-    expect(escapeHtml('<script>alert("x")</script>')).toBe("&lt;script&gt;alert(\"x\")&lt;/script&gt;");
+    expect(escapeHtml('<script>alert("x")</script>')).toBe("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;");
   });
 
   it("neutralizes an attribute-breakout attempt", () => {
-    expect(escapeHtml('"><img src=x onerror=alert(1)>')).toBe('"&gt;&lt;img src=x onerror=alert(1)&gt;');
+    expect(escapeHtml('"><img src=x onerror=alert(1)>')).toBe("&quot;&gt;&lt;img src=x onerror=alert(1)&gt;");
+    expect(escapeHtml("' onload='x")).toBe("&#39; onload=&#39;x");
   });
 
   it("treats a literal & as a raw character, not an existing entity — always escapes it, even inside what looks like one", () => {

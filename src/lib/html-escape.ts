@@ -2,5 +2,12 @@
 // email.ts (admin-settable free text -> notification emails) — both are
 // boundaries between user/AI-controlled text and rendered HTML.
 export function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Quotes too: this is also used inside HTML attribute values (ids, hrefs),
+  // where an unescaped " lets a value break out of the attribute.
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }

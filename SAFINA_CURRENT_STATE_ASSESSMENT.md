@@ -1016,3 +1016,15 @@ Two findings, both different from the previous five passes: dependency vulnerabi
 **Not verified:** layer (3) cannot be exercised by the unit tests (no Chromium in the suite). Before relying on it, export one plan PDF from the deployed app and confirm layout, page numbers and the table of contents render as before.
 
 **Verified:** `tsc`, `lint`, `vitest` clean — 325 tests, 2 net new. No migration in this pass.
+
+---
+
+## 52. Twenty-Fifth Gap-Scan Pass — Changing Your Login Email Didn't Change Where Company Notifications Go
+
+**The finding.** The account page's "Change email" (`supabase.auth.updateUser({ email })` in `ProfileForm.tsx`) updates Supabase's `auth.users` only. `public.users.email` — which every notification email in the app reads (BSC review requests, SLA reminders and escalations, plan approvals, task assignments, account-status changes) and which the team and admin pages display — was never updated, and nothing in the codebase syncs it (searched for any `USER_UPDATED` handler, trigger or update; none). After an email change, company notifications kept going to the old address: typically a mailbox the person no longer controls (a former employer, or a compromised account that prompted the change), carrying KPI and approval content. Self-serve change is the intended feature (§30), so this was a defect in the feature as shipped, not misuse.
+
+**The fix, migration `0043_sync_user_email_from_auth.sql`:** a trigger on `auth.users` (`after update of email`) copies a changed email into `public.users`, so the two cannot drift whichever path changes it (the app, or the Auth dashboard). GoTrue writes `auth.users.email` only after the change is confirmed, so a pending change does not propagate. The migration also backfills any rows that had already drifted. No application code changed.
+
+**Looked at and left alone:** AI-generated scorecard rows (`rowsToInsert`) store the model's weights as-is, unlike the 0–100 validation human edits get; the perspective is database-checked, and a bad weight is a quality problem rather than a security one.
+
+**Verified:** no code change, so `tsc`/`lint`/`vitest` are unaffected (325 tests). **`0043` not yet verified against the live project.**
